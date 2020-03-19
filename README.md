@@ -3,7 +3,7 @@
 ## Building
 
 ```
-$ go install storj.io/storj/cmd/linksharing
+$ go install storj.io/linksharing
 ```
 
 ## Configuring
