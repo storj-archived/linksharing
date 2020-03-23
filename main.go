@@ -6,6 +6,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -70,7 +71,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
-	uplink, err := uplink.NewUplink(ctx, nil)
+	newUplink, err := uplink.NewUplink(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{
-		Uplink:  uplink,
+		Uplink:  newUplink,
 		URLBase: runCfg.PublicURL,
 	})
 	if err != nil {
@@ -151,18 +152,24 @@ func configureTLS(certFile, keyFile string) (*tls.Config, error) {
 }
 
 func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
-	url, err := url.Parse(runCfg.PublicURL)
+	parsedUrl, err := url.Parse(publicURL)
 	if err != nil {
 		return nil, err
 	}
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(url.Host),
+		HostPolicy: autocert.HostWhitelist(parsedUrl.Host),
 		Cache:      autocert.DirCache(".certs"),
 	}
 	tlsConfig = &tls.Config{
 		GetCertificate: certManager.GetCertificate,
 	}
+
+	// run HTTP Endpoint as redirect and challenge handler
+	go func() {
+		_ = http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+	}()
+
 	return tlsConfig, nil
 }
 
