@@ -6,12 +6,15 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing/httpserver"
@@ -23,10 +26,11 @@ import (
 
 // LinkSharing defines link sharing configuration
 type LinkSharing struct {
-	Address   string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
-	CertFile  string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
-	KeyFile   string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	Address     string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
+	LetsEncrypt bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
+	CertFile    string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
+	KeyFile     string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
+	PublicURL   string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 }
 
 var (
@@ -66,18 +70,26 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
-	uplink, err := uplink.NewUplink(ctx, nil)
+	newUplink, err := uplink.NewUplink(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	tlsConfig, err := configureTLS(runCfg.CertFile, runCfg.KeyFile)
-	if err != nil {
-		return err
+	var tlsConfig *tls.Config
+	if runCfg.LetsEncrypt {
+		tlsConfig, err = configureLetsEncrypt(runCfg.PublicURL)
+		if err != nil {
+			return err
+		}
+	} else {
+		tlsConfig, err = configureTLS(runCfg.CertFile, runCfg.KeyFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{
-		Uplink:  uplink,
+		Uplink:  newUplink,
 		URLBase: runCfg.PublicURL,
 	})
 	if err != nil {
@@ -136,6 +148,28 @@ func configureTLS(certFile, keyFile string) (*tls.Config, error) {
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}, nil
+}
+
+func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
+	parsedUrl, err := url.Parse(publicURL)
+	if err != nil {
+		return nil, err
+	}
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(parsedUrl.Host),
+		Cache:      autocert.DirCache(".certs"),
+	}
+	tlsConfig = &tls.Config{
+		GetCertificate: certManager.GetCertificate,
+	}
+
+	// run HTTP Endpoint as redirect and challenge handler
+	go func() {
+		_ = http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+	}()
+
+	return tlsConfig, nil
 }
 
 func main() {
