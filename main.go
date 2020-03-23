@@ -19,9 +19,9 @@ import (
 	"storj.io/common/fpath"
 	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/linksharing"
+	"storj.io/private/cfgstruct"
+	"storj.io/private/process"
 	"storj.io/storj/lib/uplink"
-	"storj.io/storj/pkg/cfgstruct"
-	"storj.io/storj/pkg/process"
 )
 
 // LinkSharing defines link sharing configuration
@@ -151,13 +151,13 @@ func configureTLS(certFile, keyFile string) (*tls.Config, error) {
 }
 
 func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
-	parsedUrl, err := url.Parse(publicURL)
+	parsedURL, err := url.Parse(publicURL)
 	if err != nil {
 		return nil, err
 	}
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(parsedUrl.Host),
+		HostPolicy: autocert.HostWhitelist(parsedURL.Host),
 		Cache:      autocert.DirCache(".certs"),
 	}
 	tlsConfig = &tls.Config{
