@@ -17,8 +17,9 @@ import (
 	"go.uber.org/zap"
 
 	"storj.io/common/ranger"
+	"storj.io/common/ranger/httpranger"
 	"storj.io/common/storj"
-	"storj.io/storj/lib/uplink"
+	"storj.io/uplink"
 )
 
 var (
@@ -27,9 +28,6 @@ var (
 
 // HandlerConfig specifies the handler configuration
 type HandlerConfig struct {
-	// Uplink is the uplink used to talk to the storage network
-	Uplink *uplink.Uplink
-
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
@@ -38,15 +36,11 @@ type HandlerConfig struct {
 // Handler implements the link sharing HTTP handler
 type Handler struct {
 	log     *zap.Logger
-	uplink  *uplink.Uplink
 	urlBase *url.URL
 }
 
 // NewHandler creates a new link sharing HTTP handler
 func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
-	if config.Uplink == nil {
-		return nil, errs.New("uplink is required")
-	}
 
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
@@ -55,7 +49,6 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 
 	return &Handler{
 		log:     log,
-		uplink:  config.Uplink,
 		urlBase: urlBase,
 	}, nil
 }
@@ -83,14 +76,14 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return err
 	}
 
-	access, bucket, unencPath, err := parseRequestPath(r.URL.Path)
+	access, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	p, err := handler.uplink.OpenProject(ctx, access.SatelliteAddr, access.APIKey)
+	p, err := uplink.OpenProject(ctx, access)
 	if err != nil {
 		handler.handleUplinkErr(w, "open project", err)
 		return err
@@ -101,20 +94,15 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
-	b, err := p.OpenBucket(ctx, bucket, access.EncryptionAccess)
-	if err != nil {
-		handler.handleUplinkErr(w, "open bucket", err)
+	b, err := p.StatBucket(ctx, bucket)
+	if err != nil || b == nil {
+		handler.handleUplinkErr(w, "error finding bucket", err)
 		return err
 	}
-	defer func() {
-		if err := b.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close bucket")
-		}
-	}()
 
-	o, err := b.OpenObject(ctx, unencPath)
+	o, err := p.DownloadObject(ctx, bucket, key, nil)
 	if err != nil {
-		handler.handleUplinkErr(w, "open object", err)
+		handler.handleUplinkErr(w, "download object", err)
 		return err
 	}
 	defer func() {
@@ -129,7 +117,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
-	ranger.ServeContent(ctx, w, r, unencPath, o.Meta.Modified, newObjectRanger(o))
+	httpranger.ServeContent(ctx, w, r, key, o.Info().System.Created, newObjectRanger(p, o.Info(), bucket))
 	return nil
 }
 
@@ -145,7 +133,7 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	}
 }
 
-func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
+func parseRequestPath(p string) (*uplink.Access, string, string, error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
@@ -164,7 +152,7 @@ func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
 	bucket := segments[1]
 	unencPath := segments[2]
 
-	access, err := uplink.ParseScope(scopeb58)
+	access, err := uplink.ParseAccess(scopeb58)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -172,22 +160,27 @@ func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
 }
 
 type objectRanger struct {
-	o *uplink.Object
+	p      *uplink.Project
+	o      *uplink.Object
+	bucket string
+	key    string
 }
 
-func newObjectRanger(o *uplink.Object) ranger.Ranger {
+func newObjectRanger(p *uplink.Project, o *uplink.Object, bucket string) ranger.Ranger {
 	return &objectRanger{
-		o: o,
+		p:      p,
+		o:      o,
+		bucket: bucket,
 	}
 }
 
 func (ranger *objectRanger) Size() int64 {
-	return ranger.o.Meta.Size
+	return ranger.o.System.ContentLength
 }
 
 func (ranger *objectRanger) Range(ctx context.Context, offset, length int64) (_ io.ReadCloser, err error) {
 	defer mon.Task()(&ctx)(&err)
-	return ranger.o.DownloadRange(ctx, offset, length)
+	return ranger.p.DownloadObject(ctx, ranger.bucket, ranger.o.Key, &uplink.DownloadOptions{Offset: offset, Length: length})
 }
 
 func parseURLBase(s string) (*url.URL, error) {

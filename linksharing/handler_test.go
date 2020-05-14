@@ -4,7 +4,7 @@
 package linksharing
 
 import (
-	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -14,18 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
-	"storj.io/common/storj"
 	"storj.io/common/testcontext"
-	"storj.io/storj/lib/uplink"
 	"storj.io/storj/private/testplanet"
+	"storj.io/uplink"
 )
 
 func TestNewHandler(t *testing.T) {
 	ctx := testcontext.New(t)
 	defer ctx.Cleanup()
-
-	uplink := newUplink(ctx, t)
-	defer ctx.Check(uplink.Close)
 
 	testCases := []struct {
 		name   string
@@ -33,16 +29,8 @@ func TestNewHandler(t *testing.T) {
 		err    string
 	}{
 		{
-			name: "missing uplink",
-			config: HandlerConfig{
-				URLBase: "http://localhost",
-			},
-			err: "uplink is required",
-		},
-		{
 			name: "URL base must be http or https",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "gopher://chunks",
 			},
 			err: "URL base must be http:// or https://",
@@ -50,7 +38,6 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "URL base must contain host",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://",
 			},
 			err: "URL base must contain host",
@@ -58,21 +45,18 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "URL base can have a port",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://host:99",
 			},
 		},
 		{
 			name: "URL base can have a path",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://host/gopher",
 			},
 		},
 		{
 			name: "URL base must not contain user info",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://joe@host",
 			},
 			err: "URL base must not contain user info",
@@ -80,7 +64,6 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "URL base must not contain query values",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://host/?gopher=chunks",
 			},
 			err: "URL base must not contain query values",
@@ -88,7 +71,6 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "URL base must not contain a fragment",
 			config: HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://host/#gopher-chunks",
 			},
 			err: "URL base must not contain a fragment",
@@ -122,17 +104,11 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	err := planet.Uplinks[0].Upload(ctx, planet.Satellites[0], "testbucket", "test/foo", []byte("FOO"))
 	require.NoError(t, err)
 
-	apiKey, err := uplink.ParseAPIKey(planet.Uplinks[0].APIKey[planet.Satellites[0].ID()].Serialize())
+	apiKey := planet.Uplinks[0].APIKey[planet.Satellites[0].ID()].Serialize()
+
+	access, err := uplink.RequestAccessWithPassphrase(ctx, fmt.Sprintf("%s@%s", planet.Satellites[0].ID(), planet.Satellites[0].Addr()), apiKey, "passphrase")
 	require.NoError(t, err)
-
-	encAccess := uplink.NewEncryptionAccessWithDefaultKey(storj.Key{})
-	encAccess.SetDefaultPathCipher(storj.EncAESGCM)
-
-	access, err := (&uplink.Scope{
-		SatelliteAddr:    planet.Satellites[0].Addr(),
-		APIKey:           apiKey,
-		EncryptionAccess: encAccess,
-	}).Serialize()
+	serializedAccess, err := access.Serialize()
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -153,47 +129,47 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			name:   "GET missing access",
 			method: "GET",
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing access\n",
+			body:   "invalid request: uplink: missing access grant\n",
 		},
 		{
 			name:   "GET malformed access",
 			method: "GET",
 			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: invalid scope format\n",
+			body:   "invalid request: uplink: invalid access grant format\n",
 		},
 		{
 			name:   "GET missing bucket",
 			method: "GET",
-			path:   access,
+			path:   serializedAccess,
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket\n",
+			body:   "invalid request: uplink: missing bucket\n",
 		},
 		{
 			name:   "GET bucket not found",
 			method: "GET",
-			path:   path.Join(access, "someotherbucket", "test/foo"),
+			path:   path.Join(serializedAccess, "someotherbucket", "test/foo"),
 			status: http.StatusNotFound,
-			body:   "bucket not found\n",
+			body:   "unable to handle request\n",
 		},
 		{
 			name:   "GET missing bucket path",
 			method: "GET",
-			path:   path.Join(access, "testbucket"),
+			path:   path.Join(serializedAccess, "testbucket"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
+			body:   "invalid request: uplink: missing bucket path\n",
 		},
 		{
 			name:   "GET object not found",
 			method: "GET",
-			path:   path.Join(access, "testbucket", "test/bar"),
+			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "object not found\n",
 		},
 		{
 			name:   "GET success",
 			method: "GET",
-			path:   path.Join(access, "testbucket", "test/foo"),
+			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
 			body:   "FOO",
 		},
@@ -201,50 +177,50 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			name:   "HEAD missing access",
 			method: "HEAD",
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing access\n",
+			body:   "invalid request: uplink: missing access\n",
 		},
 		{
 			name:   "HEAD malformed access",
 			method: "HEAD",
 			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: invalid scope format\n",
+			body:   "invalid request: uplink: invalid access grant format\n",
 		},
 		{
 			name:   "HEAD missing bucket",
 			method: "HEAD",
-			path:   access,
+			path:   serializedAccess,
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket\n",
+			body:   "invalid request: uplink: missing bucket\n",
 		},
 		{
 			name:   "HEAD bucket not found",
 			method: "HEAD",
-			path:   path.Join(access, "someotherbucket", "test/foo"),
+			path:   path.Join(serializedAccess, "someotherbucket", "test/foo"),
 			status: http.StatusNotFound,
 			body:   "bucket not found\n",
 		},
 		{
 			name:   "HEAD missing bucket path",
 			method: "HEAD",
-			path:   path.Join(access, "testbucket"),
+			path:   path.Join(serializedAccess, "testbucket"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
+			body:   "invalid request: uplink: missing bucket path\n",
 		},
 		{
 			name:   "HEAD object not found",
 			method: "HEAD",
-			path:   path.Join(access, "testbucket", "test/bar"),
+			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "object not found\n",
 		},
 		{
 			name:   "HEAD success",
 			method: "HEAD",
-			path:   path.Join(access, "testbucket", "test/foo"),
+			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusFound,
 			header: http.Header{
-				"Location": []string{"http://localhost/" + path.Join(access, "testbucket", "test/foo")},
+				"Location": []string{"http://localhost/" + path.Join(serializedAccess, "testbucket", "test/foo")},
 			},
 			body: "",
 		},
@@ -253,11 +229,8 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			uplink := newUplink(ctx, t)
-			defer ctx.Check(uplink.Close)
 
 			handler, err := NewHandler(zaptest.NewLogger(t), HandlerConfig{
-				Uplink:  uplink,
 				URLBase: "http://localhost",
 			})
 			require.NoError(t, err)
@@ -275,13 +248,4 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			assert.Equal(t, testCase.body, w.Body.String(), "body does not match")
 		})
 	}
-}
-
-func newUplink(ctx context.Context, tb testing.TB) *uplink.Uplink {
-	cfg := new(uplink.Config)
-	cfg.Volatile.Log = zaptest.NewLogger(tb)
-	cfg.Volatile.TLS.SkipPeerCAWhitelist = true
-	up, err := uplink.NewUplink(ctx, cfg)
-	require.NoError(tb, err)
-	return up
 }
