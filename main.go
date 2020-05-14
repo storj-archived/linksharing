@@ -17,13 +17,10 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	"storj.io/common/fpath"
-	"storj.io/private/cfgstruct"
-	"storj.io/private/process"
 	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/linksharing"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
-	"storj.io/storj/lib/uplink"
 )
 
 // LinkSharing defines link sharing configuration
