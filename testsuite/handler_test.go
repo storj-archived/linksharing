@@ -1,13 +1,14 @@
 // Copyright (C) 2019 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package linksharing
+package testsuite
 
 import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path"
+
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
+	"storj.io/linksharing/linksharing"
 	"storj.io/storj/private/testplanet"
 	"storj.io/uplink"
 )
@@ -25,52 +27,52 @@ func TestNewHandler(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		config HandlerConfig
+		config linksharing.HandlerConfig
 		err    string
 	}{
 		{
 			name: "URL base must be http or https",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "gopher://chunks",
 			},
 			err: "URL base must be http:// or https://",
 		},
 		{
 			name: "URL base must contain host",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://",
 			},
 			err: "URL base must contain host",
 		},
 		{
 			name: "URL base can have a port",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://host:99",
 			},
 		},
 		{
 			name: "URL base can have a path",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://host/gopher",
 			},
 		},
 		{
 			name: "URL base must not contain user info",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://joe@host",
 			},
 			err: "URL base must not contain user info",
 		},
 		{
 			name: "URL base must not contain query values",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://host/?gopher=chunks",
 			},
 			err: "URL base must not contain query values",
 		},
 		{
 			name: "URL base must not contain a fragment",
-			config: HandlerConfig{
+			config: linksharing.HandlerConfig{
 				URLBase: "http://host/#gopher-chunks",
 			},
 			err: "URL base must not contain a fragment",
@@ -81,7 +83,7 @@ func TestNewHandler(t *testing.T) {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 
-			handler, err := NewHandler(zaptest.NewLogger(t), testCase.config)
+			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
 				return
@@ -230,7 +232,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 
-			handler, err := NewHandler(zaptest.NewLogger(t), HandlerConfig{
+			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), linksharing.HandlerConfig{
 				URLBase: "http://localhost",
 			})
 			require.NoError(t, err)

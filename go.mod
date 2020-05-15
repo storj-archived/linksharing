@@ -12,6 +12,5 @@ require (
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	storj.io/common v0.0.0-20200429074521-4ba140e4b747
 	storj.io/private v0.0.0-20200512191702-c862cb9ea839
-	storj.io/storj v1.4.2
 	storj.io/uplink v1.0.5
 )
