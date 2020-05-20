@@ -5,6 +5,7 @@ package linksharing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,6 @@ import (
 
 	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
-	"storj.io/common/storj"
 	"storj.io/uplink"
 )
 
@@ -94,22 +94,17 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
-	b, err := p.StatBucket(ctx, bucket)
-	if err != nil || b == nil {
-		handler.handleUplinkErr(w, "error finding bucket", err)
+	_, err = p.StatBucket(ctx, bucket)
+	if err != nil {
+		handler.handleUplinkErr(w, "stat bucket", err)
 		return err
 	}
 
-	o, err := p.DownloadObject(ctx, bucket, key, nil)
+	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
-		handler.handleUplinkErr(w, "download object", err)
+		handler.handleUplinkErr(w, "stat object", err)
 		return err
 	}
-	defer func() {
-		if err := o.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close object")
-		}
-	}()
 
 	if locationOnly {
 		location := makeLocation(handler.urlBase, r.URL.Path)
@@ -117,15 +112,15 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
-	httpranger.ServeContent(ctx, w, r, key, o.Info().System.Created, newObjectRanger(p, o.Info(), bucket))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
 	return nil
 }
 
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
 	switch {
-	case storj.ErrBucketNotFound.Has(err):
+	case errors.Is(err, uplink.ErrBucketNotFound):
 		http.Error(w, "bucket not found", http.StatusNotFound)
-	case storj.ErrObjectNotFound.Has(err):
+	case errors.Is(err, uplink.ErrObjectNotFound):
 		http.Error(w, "object not found", http.StatusNotFound)
 	default:
 		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))

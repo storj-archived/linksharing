@@ -131,7 +131,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			name:   "GET missing access",
 			method: "GET",
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing access grant\n",
+			body:   "invalid request: missing access\n",
 		},
 		{
 			name:   "GET malformed access",
@@ -145,21 +145,21 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "GET",
 			path:   serializedAccess,
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing bucket\n",
+			body:   "invalid request: missing bucket\n",
 		},
 		{
 			name:   "GET bucket not found",
 			method: "GET",
 			path:   path.Join(serializedAccess, "someotherbucket", "test/foo"),
 			status: http.StatusNotFound,
-			body:   "unable to handle request\n",
+			body:   "bucket not found\n",
 		},
 		{
 			name:   "GET missing bucket path",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing bucket path\n",
+			body:   "invalid request: missing bucket path\n",
 		},
 		{
 			name:   "GET object not found",
@@ -179,7 +179,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			name:   "HEAD missing access",
 			method: "HEAD",
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing access\n",
+			body:   "invalid request: missing access\n",
 		},
 		{
 			name:   "HEAD malformed access",
@@ -193,7 +193,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "HEAD",
 			path:   serializedAccess,
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing bucket\n",
+			body:   "invalid request: missing bucket\n",
 		},
 		{
 			name:   "HEAD bucket not found",
@@ -207,7 +207,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "HEAD",
 			path:   path.Join(serializedAccess, "testbucket"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: missing bucket path\n",
+			body:   "invalid request: missing bucket path\n",
 		},
 		{
 			name:   "HEAD object not found",
