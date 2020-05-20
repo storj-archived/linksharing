@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/spacemonkeygo/monkit/v3"
-	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
 	"storj.io/common/ranger"
@@ -71,7 +70,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		locationOnly = true
 	case http.MethodGet:
 	default:
-		err = errs.New("method not allowed")
+		err = errors.New("method not allowed")
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return err
 	}
@@ -137,11 +136,11 @@ func parseRequestPath(p string) (*uplink.Access, string, string, error) {
 	switch len(segments) {
 	case 1:
 		if segments[0] == "" {
-			return nil, "", "", errs.New("missing access")
+			return nil, "", "", errors.New("missing access")
 		}
-		return nil, "", "", errs.New("missing bucket")
+		return nil, "", "", errors.New("missing bucket")
 	case 2:
-		return nil, "", "", errs.New("missing bucket path")
+		return nil, "", "", errors.New("missing bucket path")
 	}
 	scopeb58 := segments[0]
 	bucket := segments[1]
@@ -180,20 +179,20 @@ func (ranger *objectRanger) Range(ctx context.Context, offset, length int64) (_ 
 func parseURLBase(s string) (*url.URL, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return nil, errs.Wrap(err)
+		return nil, err
 	}
 
 	switch {
 	case u.Scheme != "http" && u.Scheme != "https":
-		return nil, errs.New("URL base must be http:// or https://")
+		return nil, errors.New("URL base must be http:// or https://")
 	case u.Host == "":
-		return nil, errs.New("URL base must contain host")
+		return nil, errors.New("URL base must contain host")
 	case u.User != nil:
-		return nil, errs.New("URL base must not contain user info")
+		return nil, errors.New("URL base must not contain user info")
 	case u.RawQuery != "":
-		return nil, errs.New("URL base must not contain query values")
+		return nil, errors.New("URL base must not contain query values")
 	case u.Fragment != "":
-		return nil, errs.New("URL base must not contain a fragment")
+		return nil, errors.New("URL base must not contain a fragment")
 	}
 	return u, nil
 }

@@ -4,7 +4,6 @@
 package testsuite
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -18,7 +17,6 @@ import (
 	"storj.io/common/testcontext"
 	"storj.io/linksharing/linksharing"
 	"storj.io/storj/private/testplanet"
-	"storj.io/uplink"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -106,9 +104,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	err := planet.Uplinks[0].Upload(ctx, planet.Satellites[0], "testbucket", "test/foo", []byte("FOO"))
 	require.NoError(t, err)
 
-	apiKey := planet.Uplinks[0].APIKey[planet.Satellites[0].ID()].Serialize()
-
-	access, err := uplink.RequestAccessWithPassphrase(ctx, fmt.Sprintf("%s@%s", planet.Satellites[0].ID(), planet.Satellites[0].Addr()), apiKey, "passphrase")
+	access, err := planet.Uplinks[0].GetConfig(planet.Satellites[0]).GetAccess()
 	require.NoError(t, err)
 	serializedAccess, err := access.Serialize()
 	require.NoError(t, err)
