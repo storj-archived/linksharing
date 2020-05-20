@@ -93,12 +93,6 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
-	_, err = p.StatBucket(ctx, bucket)
-	if err != nil {
-		handler.handleUplinkErr(w, "stat bucket", err)
-		return err
-	}
-
 	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
 		handler.handleUplinkErr(w, "stat object", err)

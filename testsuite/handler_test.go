@@ -144,13 +144,6 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			body:   "invalid request: missing bucket\n",
 		},
 		{
-			name:   "GET bucket not found",
-			method: "GET",
-			path:   path.Join(serializedAccess, "someotherbucket", "test/foo"),
-			status: http.StatusNotFound,
-			body:   "bucket not found\n",
-		},
-		{
 			name:   "GET missing bucket path",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket"),
@@ -190,13 +183,6 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			path:   serializedAccess,
 			status: http.StatusBadRequest,
 			body:   "invalid request: missing bucket\n",
-		},
-		{
-			name:   "HEAD bucket not found",
-			method: "HEAD",
-			path:   path.Join(serializedAccess, "someotherbucket", "test/foo"),
-			status: http.StatusNotFound,
-			body:   "bucket not found\n",
 		},
 		{
 			name:   "HEAD missing bucket path",
