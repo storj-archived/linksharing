@@ -163,7 +163,6 @@ type objectRanger struct {
 	p      *uplink.Project
 	o      *uplink.Object
 	bucket string
-	key    string
 }
 
 func newObjectRanger(p *uplink.Project, o *uplink.Object, bucket string) ranger.Ranger {
