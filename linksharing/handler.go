@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"storj.io/common/ranger"
+	"storj.io/common/ranger/httpranger"
 	"storj.io/common/storj"
 	"storj.io/storj/lib/uplink"
 )
@@ -129,7 +130,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
-	ranger.ServeContent(ctx, w, r, unencPath, o.Meta.Modified, newObjectRanger(o))
+	httpranger.ServeContent(ctx, w, r, unencPath, o.Meta.Modified, newObjectRanger(o))
 	return nil
 }
 
