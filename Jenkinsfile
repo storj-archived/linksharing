@@ -80,13 +80,13 @@ pipeline {
 
                 stage('Testsuite') {
                     environment {
-                        STORJ_COCKROACH_TEST = 'cockroach://root@localhost:26257/testcockroach?sslmode=disable'
-                        STORJ_POSTGRES_TEST = 'postgres://postgres@localhost/teststorj?sslmode=disable'
+                        STORJ_COCKROACH_TEST = 'cockroach://root@localhost:26257/testcockroach-testsuite?sslmode=disable'
+                        STORJ_POSTGRES_TEST = 'postgres://postgres@localhost/teststorj-testsuite?sslmode=disable'
                         COVERFLAGS = "${ env.BRANCH_NAME != 'master' ? '' : '-coverprofile=../.build/coverprofile -coverpkg=./...'}"
                     }
                     steps {
-                        sh 'cockroach sql --insecure --host=localhost:26257 -e \'create database testcockroach;\''
-                        sh 'psql -U postgres -c \'create database teststorj;\''
+                        sh 'cockroach sql --insecure --host=localhost:26257 -e \'create database testcockroach-testsuite;\''
+                        sh 'psql -U postgres -c \'create database teststorj-testsuite;\''
                         sh 'use-ports -from 1024 -to 10000 &'
                         dir('testsuite'){
                             sh 'go vet ./...'
