@@ -5,6 +5,7 @@ package linksharing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,12 +14,11 @@ import (
 	"strings"
 
 	"github.com/spacemonkeygo/monkit/v3"
-	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
 	"storj.io/common/ranger"
-	"storj.io/common/storj"
-	"storj.io/storj/lib/uplink"
+	"storj.io/common/ranger/httpranger"
+	"storj.io/uplink"
 )
 
 var (
@@ -27,9 +27,6 @@ var (
 
 // HandlerConfig specifies the handler configuration
 type HandlerConfig struct {
-	// Uplink is the uplink used to talk to the storage network
-	Uplink *uplink.Uplink
-
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
@@ -38,15 +35,11 @@ type HandlerConfig struct {
 // Handler implements the link sharing HTTP handler
 type Handler struct {
 	log     *zap.Logger
-	uplink  *uplink.Uplink
 	urlBase *url.URL
 }
 
 // NewHandler creates a new link sharing HTTP handler
 func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
-	if config.Uplink == nil {
-		return nil, errs.New("uplink is required")
-	}
 
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
@@ -55,7 +48,6 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 
 	return &Handler{
 		log:     log,
-		uplink:  config.Uplink,
 		urlBase: urlBase,
 	}, nil
 }
@@ -78,19 +70,19 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		locationOnly = true
 	case http.MethodGet:
 	default:
-		err = errs.New("method not allowed")
+		err = errors.New("method not allowed")
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return err
 	}
 
-	access, bucket, unencPath, err := parseRequestPath(r.URL.Path)
+	access, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	p, err := handler.uplink.OpenProject(ctx, access.SatelliteAddr, access.APIKey)
+	p, err := uplink.OpenProject(ctx, access)
 	if err != nil {
 		handler.handleUplinkErr(w, "open project", err)
 		return err
@@ -101,27 +93,11 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
-	b, err := p.OpenBucket(ctx, bucket, access.EncryptionAccess)
+	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
-		handler.handleUplinkErr(w, "open bucket", err)
+		handler.handleUplinkErr(w, "stat object", err)
 		return err
 	}
-	defer func() {
-		if err := b.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close bucket")
-		}
-	}()
-
-	o, err := b.OpenObject(ctx, unencPath)
-	if err != nil {
-		handler.handleUplinkErr(w, "open object", err)
-		return err
-	}
-	defer func() {
-		if err := o.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close object")
-		}
-	}()
 
 	if locationOnly {
 		location := makeLocation(handler.urlBase, r.URL.Path)
@@ -129,15 +105,15 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
-	ranger.ServeContent(ctx, w, r, unencPath, o.Meta.Modified, newObjectRanger(o))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
 	return nil
 }
 
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
 	switch {
-	case storj.ErrBucketNotFound.Has(err):
+	case errors.Is(err, uplink.ErrBucketNotFound):
 		http.Error(w, "bucket not found", http.StatusNotFound)
-	case storj.ErrObjectNotFound.Has(err):
+	case errors.Is(err, uplink.ErrObjectNotFound):
 		http.Error(w, "object not found", http.StatusNotFound)
 	default:
 		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
@@ -145,7 +121,7 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	}
 }
 
-func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
+func parseRequestPath(p string) (*uplink.Access, string, string, error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
@@ -154,17 +130,17 @@ func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
 	switch len(segments) {
 	case 1:
 		if segments[0] == "" {
-			return nil, "", "", errs.New("missing access")
+			return nil, "", "", errors.New("missing access")
 		}
-		return nil, "", "", errs.New("missing bucket")
+		return nil, "", "", errors.New("missing bucket")
 	case 2:
-		return nil, "", "", errs.New("missing bucket path")
+		return nil, "", "", errors.New("missing bucket path")
 	}
 	scopeb58 := segments[0]
 	bucket := segments[1]
 	unencPath := segments[2]
 
-	access, err := uplink.ParseScope(scopeb58)
+	access, err := uplink.ParseAccess(scopeb58)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -172,41 +148,45 @@ func parseRequestPath(p string) (*uplink.Scope, string, string, error) {
 }
 
 type objectRanger struct {
-	o *uplink.Object
+	p      *uplink.Project
+	o      *uplink.Object
+	bucket string
 }
 
-func newObjectRanger(o *uplink.Object) ranger.Ranger {
+func newObjectRanger(p *uplink.Project, o *uplink.Object, bucket string) ranger.Ranger {
 	return &objectRanger{
-		o: o,
+		p:      p,
+		o:      o,
+		bucket: bucket,
 	}
 }
 
 func (ranger *objectRanger) Size() int64 {
-	return ranger.o.Meta.Size
+	return ranger.o.System.ContentLength
 }
 
 func (ranger *objectRanger) Range(ctx context.Context, offset, length int64) (_ io.ReadCloser, err error) {
 	defer mon.Task()(&ctx)(&err)
-	return ranger.o.DownloadRange(ctx, offset, length)
+	return ranger.p.DownloadObject(ctx, ranger.bucket, ranger.o.Key, &uplink.DownloadOptions{Offset: offset, Length: length})
 }
 
 func parseURLBase(s string) (*url.URL, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return nil, errs.Wrap(err)
+		return nil, err
 	}
 
 	switch {
 	case u.Scheme != "http" && u.Scheme != "https":
-		return nil, errs.New("URL base must be http:// or https://")
+		return nil, errors.New("URL base must be http:// or https://")
 	case u.Host == "":
-		return nil, errs.New("URL base must contain host")
+		return nil, errors.New("URL base must contain host")
 	case u.User != nil:
-		return nil, errs.New("URL base must not contain user info")
+		return nil, errors.New("URL base must not contain user info")
 	case u.RawQuery != "":
-		return nil, errs.New("URL base must not contain query values")
+		return nil, errors.New("URL base must not contain query values")
 	case u.Fragment != "":
-		return nil, errs.New("URL base must not contain a fragment")
+		return nil, errors.New("URL base must not contain a fragment")
 	}
 	return u, nil
 }

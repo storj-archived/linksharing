@@ -21,7 +21,6 @@ import (
 	"storj.io/linksharing/linksharing"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
-	"storj.io/storj/lib/uplink"
 )
 
 // LinkSharing defines link sharing configuration
@@ -70,11 +69,6 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
-	newUplink, err := uplink.NewUplink(ctx, nil)
-	if err != nil {
-		return err
-	}
-
 	var tlsConfig *tls.Config
 	if runCfg.LetsEncrypt {
 		tlsConfig, err = configureLetsEncrypt(runCfg.PublicURL)
@@ -88,10 +82,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{
-		Uplink:  newUplink,
-		URLBase: runCfg.PublicURL,
-	})
+	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL})
 	if err != nil {
 		return err
 	}
