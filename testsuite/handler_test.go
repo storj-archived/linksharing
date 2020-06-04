@@ -104,8 +104,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	err := planet.Uplinks[0].Upload(ctx, planet.Satellites[0], "testbucket", "test/foo", []byte("FOO"))
 	require.NoError(t, err)
 
-	access, err := planet.Uplinks[0].GetConfig(planet.Satellites[0]).GetAccess()
-	require.NoError(t, err)
+	access := planet.Uplinks[0].Access[planet.Satellites[0].ID()]
 	serializedAccess, err := access.Serialize()
 	require.NoError(t, err)
 
