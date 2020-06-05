@@ -151,3 +151,11 @@ clean: binaries-clean
 .PHONY: binaries-clean
 binaries-clean: ## Remove all local release binaries (jenkins)
 	rm -rf release
+
+.PHONY: bump-dependencies
+bump-dependencies:
+	go get storj.io/common@master storj.io/private@master storj.io/uplink@master
+	go mod tidy
+	cd testsuite;\
+		go get storj.io/common@master storj.io/storj@master;\
+		go mod tidy
