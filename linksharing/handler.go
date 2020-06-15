@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"text/template"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
@@ -23,6 +24,28 @@ import (
 
 var (
 	mon = monkit.Package()
+
+	header = `
+	<html lang="en">
+	<head>
+  		<meta charset="utf-8">
+  		<title>Tardigrade Linksharing</title>
+  		<meta name="description" content="Tardigrade Linksharing">
+	</head>
+	`
+	footer = "</html>"
+
+	prefixTmpl = template.Must(template.New("prefix").Parse(`
+	<body>
+	<h3>Bucket: {{.Bucket}}</h3>
+	<h3>Prefix: {{.Prefix }}</h3>
+    <ul>
+        {{range .Items}}
+            <li><a href="{{.}}">{{.}}</a></li>
+        {{end}}
+    </ul>
+	</body>
+	`))
 )
 
 // HandlerConfig specifies the handler configuration
@@ -93,6 +116,10 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
+	if key == "" || strings.HasSuffix(key, "/") {
+		return handler.servePrefix(ctx, w, p, bucket, key)
+	}
+
 	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
 		handler.handleUplinkErr(w, "stat object", err)
@@ -109,6 +136,43 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	return nil
 }
 
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, bucket, prefix string) (err error) {
+	_, err = w.Write([]byte(header))
+	if err != nil {
+		return err
+	}
+
+	var input struct {
+		Bucket string
+		Prefix string
+		Items  []string
+	}
+	input.Bucket = bucket
+	input.Prefix = prefix
+	input.Items = make([]string, 0)
+
+	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
+		Prefix: prefix,
+	})
+
+	// TODO add paging
+	for objects.Next() {
+		item := objects.Item().Key[len(prefix):]
+		input.Items = append(input.Items, item)
+	}
+	if objects.Err() != nil {
+		return objects.Err()
+	}
+
+	err = prefixTmpl.Execute(w, input)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte(footer))
+	return err
+}
+
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
 	switch {
 	case errors.Is(err, uplink.ErrBucketNotFound):
@@ -121,30 +185,31 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	}
 }
 
-func parseRequestPath(p string) (*uplink.Access, string, string, error) {
+func parseRequestPath(p string) (_ *uplink.Access, bucket string, key string, err error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
 	// Split the request path
 	segments := strings.SplitN(p, "/", 3)
-	switch len(segments) {
-	case 1:
+	if len(segments) == 1 {
 		if segments[0] == "" {
 			return nil, "", "", errors.New("missing access")
 		}
 		return nil, "", "", errors.New("missing bucket")
-	case 2:
-		return nil, "", "", errors.New("missing bucket path")
 	}
+
 	scopeb58 := segments[0]
-	bucket := segments[1]
-	unencPath := segments[2]
+	bucket = segments[1]
+
+	if len(segments) == 3 {
+		key = segments[2]
+	}
 
 	access, err := uplink.ParseAccess(scopeb58)
 	if err != nil {
 		return nil, "", "", err
 	}
-	return access, bucket, unencPath, nil
+	return access, bucket, key, nil
 }
 
 type objectRanger struct {

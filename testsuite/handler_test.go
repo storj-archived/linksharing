@@ -143,13 +143,6 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			body:   "invalid request: missing bucket\n",
 		},
 		{
-			name:   "GET missing bucket path",
-			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
-		},
-		{
 			name:   "GET object not found",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
@@ -162,6 +155,20 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
 			body:   "FOO",
+		},
+		{
+			name:   "GET bucket listing success",
+			method: "GET",
+			path:   path.Join(serializedAccess, "testbucket/", ""),
+			status: http.StatusOK,
+			body:   "test/",
+		},
+		{
+			name:   "GET prefix listing success",
+			method: "GET",
+			path:   path.Join(serializedAccess, "testbucket", "test") + "/",
+			status: http.StatusOK,
+			body:   "foo",
 		},
 		{
 			name:   "HEAD missing access",
@@ -182,13 +189,6 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			path:   serializedAccess,
 			status: http.StatusBadRequest,
 			body:   "invalid request: missing bucket\n",
-		},
-		{
-			name:   "HEAD missing bucket path",
-			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
 		},
 		{
 			name:   "HEAD object not found",
@@ -228,7 +228,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			for h, v := range testCase.header {
 				assert.Equal(t, v, w.Header()[h], "%q header does not match", h)
 			}
-			assert.Equal(t, testCase.body, w.Body.String(), "body does not match")
+			assert.Contains(t, w.Body.String(), testCase.body, "body does not match")
 		})
 	}
 }
