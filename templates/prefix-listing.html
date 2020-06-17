@@ -1,0 +1,55 @@
+{{template "header.html"}}
+
+<div class="col">
+<div class="card directory">
+
+    <section class="file-info text-left">
+
+      <div class="row">
+        <div class="col">
+          <h2 class="directory-heading">{{.Prefix}}</h2>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <h4 class="breadcrumbs">
+            {{if .Prefix}}
+            <a href="../">..</a>
+            {{end}}
+            <span class="separator"></span>
+          </h4>
+        </div>
+      </div>
+
+      {{range .Items}}
+        {{if .Prefix}}
+            <a class="directory-link" href="{{.Name}}">
+                <div class="row">
+                    <div class="col">
+                        <img src="/static/img/folder.svg" alt="Prefix"/>
+                        <span class="directory-name">{{.Name}}</span>
+                    </div>
+                </div>
+            </a>
+        {{else}}
+            <a class="directory-link" href="{{.Name}}">
+                <div class="row">
+                    <div class="col-9 col-sm-10 col-xl-11">
+                        <img src="/static/img/file.svg" alt="Object"/>
+                        <span class="directory-name">{{.Name}}</span>
+                    </div>
+                    <div class="col-3 col-sm-2 col-xl-1">
+                        <p class="directory-size">{{.Size}}</p>
+                    </div>
+                </div>
+            </a>
+        {{end}}
+      {{end}}
+
+    </section>
+
+</div>
+</div>
+
+{{template "footer.html"}}

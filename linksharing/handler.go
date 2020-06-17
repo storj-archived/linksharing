@@ -17,6 +17,7 @@ import (
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
 
+	"storj.io/common/memory"
 	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
 	"storj.io/uplink"
@@ -24,28 +25,6 @@ import (
 
 var (
 	mon = monkit.Package()
-
-	header = `
-	<html lang="en">
-	<head>
-  		<meta charset="utf-8">
-  		<title>Tardigrade Linksharing</title>
-  		<meta name="description" content="Tardigrade Linksharing">
-	</head>
-	`
-	footer = "</html>"
-
-	prefixTmpl = template.Must(template.New("prefix").Parse(`
-	<body>
-	<h3>Bucket: {{.Bucket}}</h3>
-	<h3>Prefix: {{.Prefix }}</h3>
-    <ul>
-        {{range .Items}}
-            <li><a href="{{.}}">{{.}}</a></li>
-        {{end}}
-    </ul>
-	</body>
-	`))
 )
 
 // HandlerConfig specifies the handler configuration
@@ -57,8 +36,9 @@ type HandlerConfig struct {
 
 // Handler implements the link sharing HTTP handler
 type Handler struct {
-	log     *zap.Logger
-	urlBase *url.URL
+	log       *zap.Logger
+	urlBase   *url.URL
+	templates *template.Template
 }
 
 // NewHandler creates a new link sharing HTTP handler
@@ -69,9 +49,16 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
+	// TODO add to configuration
+	templates, err := template.ParseGlob("./templates/*.html")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
-		log:     log,
-		urlBase: urlBase,
+		log:       log,
+		urlBase:   urlBase,
+		templates: templates,
 	}, nil
 }
 
@@ -132,45 +119,65 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
+	_, download := r.URL.Query()["download"]
+	_, view := r.URL.Query()["view"]
+	if !download && !view {
+		var input struct {
+			Name string
+			Size string
+		}
+		input.Name = o.Key
+		input.Size = memory.Size(o.System.ContentLength).Base10String()
+
+		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
+	}
+
+	if download {
+		segments := strings.Split(key, "/")
+		object := segments[len(segments)-1]
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+object+"\"")
+	}
 	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
 	return nil
 }
 
 func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, bucket, prefix string) (err error) {
-	_, err = w.Write([]byte(header))
-	if err != nil {
-		return err
+	type Item struct {
+		Name   string
+		Size   string
+		Prefix bool
 	}
 
 	var input struct {
 		Bucket string
 		Prefix string
-		Items  []string
+		Items  []Item
 	}
 	input.Bucket = bucket
-	input.Prefix = prefix
-	input.Items = make([]string, 0)
+	input.Prefix = bucket + "/" + prefix
+	input.Items = make([]Item, 0)
 
 	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
 		Prefix: prefix,
+		System: true,
 	})
 
 	// TODO add paging
 	for objects.Next() {
-		item := objects.Item().Key[len(prefix):]
-		input.Items = append(input.Items, item)
+		item := objects.Item()
+		name := item.Key[len(prefix):]
+		input.Items = append(input.Items, Item{
+			Name:   name,
+			Size:   memory.Size(item.System.ContentLength).Base10String(),
+			Prefix: item.IsPrefix,
+		})
 	}
 	if objects.Err() != nil {
+		http.Error(w, "unable to list prefix", http.StatusInternalServerError)
 		return objects.Err()
 	}
 
-	err = prefixTmpl.Execute(w, input)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write([]byte(footer))
-	return err
+	return handler.templates.ExecuteTemplate(w, "prefix-listing.html", input)
 }
 
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
