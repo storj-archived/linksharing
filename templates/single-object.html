@@ -5,15 +5,16 @@
   <section class="file-wrapper text-center">
 
     <!-- Use this img if file is not image or video and cannot be previewed -->
-    <img src="/static/img/file.png" class="img-fluid img-file" alt="File icon">
-
+    {{if .Viewable}}
+      <!-- Example for a preview video -->
+      <div class="embed-responsive embed-responsive-16by9">
+        <iframe class="embed-responsive-item" src="?view" allowfullscreen></iframe>
+      </div>
+    {{else}}
+      <img src="/static/img/file.png" class="img-fluid img-file" alt="File icon">
+    {{end}}
     <!-- Example for a preview image -->
     <!-- <img src="img/the-new-york-public-library-yEauzeZU6xo-unsplash.jpg" class="img-fluid img-preview" alt=""> -->
-
-    <!-- Example for a preview video -->
-    <!-- <div class="embed-responsive embed-responsive-16by9">
-      <iframe class="embed-responsive-item" src="https://www.youtube.com/embed/zpOULjyy-n8?rel=0" allowfullscreen></iframe>
-    </div> -->
 
   </section>
 

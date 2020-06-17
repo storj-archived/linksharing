@@ -7,20 +7,29 @@
 
       <div class="row">
         <div class="col">
-          <h2 class="directory-heading">{{.Prefix}}</h2>
+          <h2 class="directory-heading">{{.Bucket}}</h2>
         </div>
       </div>
 
       <div class="row">
         <div class="col">
           <h4 class="breadcrumbs">
-            {{if .Prefix}}
-            <a href="../">..</a>
+            {{range .Breadcrumbs}}
+            <a href="/{{.URL}}">{{.Prefix}}</a>
+            <span class="separator">/</span>
             {{end}}
-            <span class="separator"></span>
           </h4>
         </div>
       </div>
+
+      <a class="directory-link" href="../">
+        <div class="row">
+          <div class="col">
+            <img src="/static/img/back.svg" alt="Back">
+            <span class="directory-name">Back</span>
+          </div>
+        </div>
+      </a>
 
       {{range .Items}}
         {{if .Prefix}}
@@ -33,13 +42,13 @@
                 </div>
             </a>
         {{else}}
-            <a class="directory-link" href="{{.Name}}">
+            <a class="directory-link" href="{{.Name}}?download">
                 <div class="row">
-                    <div class="col-9 col-sm-10 col-xl-11">
+                    <div class="col-9 col-sm-10">
                         <img src="/static/img/file.svg" alt="Object"/>
                         <span class="directory-name">{{.Name}}</span>
                     </div>
-                    <div class="col-3 col-sm-2 col-xl-1">
+                    <div class="col-3 col-sm-2 text-right">
                         <p class="directory-size">{{.Size}}</p>
                     </div>
                 </div>

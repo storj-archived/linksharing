@@ -85,7 +85,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return err
 	}
 
-	access, bucket, key, err := parseRequestPath(r.URL.Path)
+	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -104,7 +104,11 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	}()
 
 	if key == "" || strings.HasSuffix(key, "/") {
-		return handler.servePrefix(ctx, w, p, bucket, key)
+		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		if err != nil {
+			handler.handleUplinkErr(w, "list prefix", err)
+		}
+		return nil
 	}
 
 	o, err := p.StatObject(ctx, bucket, key)
@@ -123,11 +127,16 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	_, view := r.URL.Query()["view"]
 	if !download && !view {
 		var input struct {
-			Name string
-			Size string
+			Name     string
+			Size     string
+			Viewable bool
 		}
-		input.Name = o.Key
+		input.Name = bucket + "/" + o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()
+
+		if strings.HasSuffix(input.Name, ".mp4") {
+			input.Viewable = true
+		}
 
 		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
 	}
@@ -141,20 +150,38 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	return nil
 }
 
-func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, bucket, prefix string) (err error) {
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, serializedAccess string, bucket, prefix string) (err error) {
 	type Item struct {
 		Name   string
 		Size   string
 		Prefix bool
 	}
 
-	var input struct {
-		Bucket string
+	type Breadcrumb struct {
 		Prefix string
-		Items  []Item
+		URL    string
+	}
+
+	var input struct {
+		Bucket      string
+		Breadcrumbs []Breadcrumb
+		Items       []Item
 	}
 	input.Bucket = bucket
-	input.Prefix = bucket + "/" + prefix
+	input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+		Prefix: bucket,
+		URL:    serializedAccess + "/" + bucket + "/",
+	})
+	if prefix != "" {
+		trimmed := strings.TrimRight(prefix, "/")
+		for i, prefix := range strings.Split(trimmed, "/") {
+			input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+				Prefix: prefix,
+				URL:    input.Breadcrumbs[i].URL + "/" + prefix + "/",
+			})
+		}
+	}
+
 	input.Items = make([]Item, 0)
 
 	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
@@ -173,7 +200,6 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 		})
 	}
 	if objects.Err() != nil {
-		http.Error(w, "unable to list prefix", http.StatusInternalServerError)
 		return objects.Err()
 	}
 
@@ -183,16 +209,18 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
 	switch {
 	case errors.Is(err, uplink.ErrBucketNotFound):
-		http.Error(w, "bucket not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		handler.templates.ExecuteTemplate(w, "404.html", "Oops! Bucket not found.")
 	case errors.Is(err, uplink.ErrObjectNotFound):
-		http.Error(w, "object not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
 	default:
 		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 	}
 }
 
-func parseRequestPath(p string) (_ *uplink.Access, bucket string, key string, err error) {
+func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
@@ -200,23 +228,23 @@ func parseRequestPath(p string) (_ *uplink.Access, bucket string, key string, er
 	segments := strings.SplitN(p, "/", 3)
 	if len(segments) == 1 {
 		if segments[0] == "" {
-			return nil, "", "", errors.New("missing access")
+			return nil, "", "", "", errors.New("missing access")
 		}
-		return nil, "", "", errors.New("missing bucket")
+		return nil, "", "", "", errors.New("missing bucket")
 	}
 
-	scopeb58 := segments[0]
+	serializedAccess = segments[0]
 	bucket = segments[1]
 
 	if len(segments) == 3 {
 		key = segments[2]
 	}
 
-	access, err := uplink.ParseAccess(scopeb58)
+	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", err
 	}
-	return access, bucket, key, nil
+	return access, serializedAccess, bucket, key, nil
 }
 
 type objectRanger struct {
