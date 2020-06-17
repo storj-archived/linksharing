@@ -32,6 +32,9 @@ type HandlerConfig struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
+
+	// Templates location with html templates.
+	Templates string
 }
 
 // Handler implements the link sharing HTTP handler
@@ -49,8 +52,10 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
-	// TODO add to configuration
-	templates, err := template.ParseGlob("./templates/*.html")
+	if config.Templates == "" {
+		config.Templates = "./templates/*.html"
+	}
+	templates, err := template.ParseGlob(config.Templates)
 	if err != nil {
 		return nil, err
 	}

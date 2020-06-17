@@ -80,7 +80,7 @@ func TestNewHandler(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
+			testCase.config.Templates = "./../templates/*.html"
 			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
@@ -147,14 +147,14 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
-			body:   "object not found\n",
+			body:   "Object not found",
 		},
 		{
 			name:   "GET success",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
-			body:   "FOO",
+			body:   "foo",
 		},
 		{
 			name:   "GET bucket listing success",
@@ -195,7 +195,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "HEAD",
 			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
-			body:   "object not found\n",
+			body:   "Object not found",
 		},
 		{
 			name:   "HEAD success",
@@ -212,9 +212,9 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
 			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), linksharing.HandlerConfig{
-				URLBase: "http://localhost",
+				URLBase:   "http://localhost",
+				Templates: "./../templates/*.html",
 			})
 			require.NoError(t, err)
 

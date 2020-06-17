@@ -68,6 +68,7 @@ func New(log *zap.Logger, config Config) (*Server, error) {
 	}
 
 	mux := http.NewServeMux()
+	// TODO add static folder location to linksharing configuration
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	mux.Handle("/", config.Handler)
 
