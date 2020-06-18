@@ -210,10 +210,16 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	switch {
 	case errors.Is(err, uplink.ErrBucketNotFound):
 		w.WriteHeader(http.StatusNotFound)
-		handler.templates.ExecuteTemplate(w, "404.html", "Oops! Bucket not found.")
+		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Bucket not found.")
+		if err != nil {
+			handler.log.Error("error while executing template", zap.Error(err))
+		}
 	case errors.Is(err, uplink.ErrObjectNotFound):
 		w.WriteHeader(http.StatusNotFound)
-		handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
+		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
+		if err != nil {
+			handler.log.Error("error while executing template", zap.Error(err))
+		}
 	default:
 		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
