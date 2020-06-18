@@ -132,16 +132,11 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	_, view := r.URL.Query()["view"]
 	if !download && !view {
 		var input struct {
-			Name     string
-			Size     string
-			Viewable bool
+			Name string
+			Size string
 		}
 		input.Name = bucket + "/" + o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()
-
-		if strings.HasSuffix(input.Name, ".mp4") {
-			input.Viewable = true
-		}
 
 		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
 	}
