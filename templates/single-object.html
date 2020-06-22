@@ -1,0 +1,26 @@
+{{template "header.html"}}
+
+<div class="col-xl-9 col-lg-10">
+<div class="card">
+  <section class="file-wrapper text-center">
+      <!-- Example for a preview video -->
+      <!-- <div class="embed-responsive embed-responsive-16by9">
+              <iframe class="embed-responsive-item" src="?view" allowfullscreen></iframe>
+            </div> -->
+      <!-- Use this img if file is not image or video and cannot be previewed -->
+      <img src="/static/img/file.png" class="img-fluid img-file" alt="File icon">
+      
+      <!-- Example for a preview image -->
+      <!-- <img src="img/the-new-york-public-library-yEauzeZU6xo-unsplash.jpg" class="img-fluid img-preview" alt=""> -->
+  </section>
+
+  <section class="file-info text-center">
+    <h2 class="file-heading">Download File</h2>
+    <p class="file-name">{{.Name}}</p>
+    <p class="file-size">{{.Size}}</p>
+    <a class="btn btn-primary btn-block btn-download" href="?download">Download</a>
+  </section>
+</div>
+</div>
+
+{{template "footer.html"}}

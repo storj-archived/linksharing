@@ -12,10 +12,12 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"text/template"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
 
+	"storj.io/common/memory"
 	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
 	"storj.io/uplink"
@@ -30,12 +32,16 @@ type HandlerConfig struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
+
+	// Templates location with html templates.
+	Templates string
 }
 
 // Handler implements the link sharing HTTP handler
 type Handler struct {
-	log     *zap.Logger
-	urlBase *url.URL
+	log       *zap.Logger
+	urlBase   *url.URL
+	templates *template.Template
 }
 
 // NewHandler creates a new link sharing HTTP handler
@@ -46,9 +52,18 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
+	if config.Templates == "" {
+		config.Templates = "./templates/*.html"
+	}
+	templates, err := template.ParseGlob(config.Templates)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
-		log:     log,
-		urlBase: urlBase,
+		log:       log,
+		urlBase:   urlBase,
+		templates: templates,
 	}, nil
 }
 
@@ -75,7 +90,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return err
 	}
 
-	access, bucket, key, err := parseRequestPath(r.URL.Path)
+	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -93,6 +108,14 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
+	if key == "" || strings.HasSuffix(key, "/") {
+		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		if err != nil {
+			handler.handleUplinkErr(w, "list prefix", err)
+		}
+		return nil
+	}
+
 	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
 		handler.handleUplinkErr(w, "stat object", err)
@@ -105,46 +128,129 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return nil
 	}
 
+	_, download := r.URL.Query()["download"]
+	_, view := r.URL.Query()["view"]
+	if !download && !view {
+		var input struct {
+			Name string
+			Size string
+		}
+		input.Name = bucket + "/" + o.Key
+		input.Size = memory.Size(o.System.ContentLength).Base10String()
+
+		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
+	}
+
+	if download {
+		segments := strings.Split(key, "/")
+		object := segments[len(segments)-1]
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+object+"\"")
+	}
 	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
 	return nil
+}
+
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, serializedAccess string, bucket, prefix string) (err error) {
+	type Item struct {
+		Name   string
+		Size   string
+		Prefix bool
+	}
+
+	type Breadcrumb struct {
+		Prefix string
+		URL    string
+	}
+
+	var input struct {
+		Bucket      string
+		Breadcrumbs []Breadcrumb
+		Items       []Item
+	}
+	input.Bucket = bucket
+	input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+		Prefix: bucket,
+		URL:    serializedAccess + "/" + bucket + "/",
+	})
+	if prefix != "" {
+		trimmed := strings.TrimRight(prefix, "/")
+		for i, prefix := range strings.Split(trimmed, "/") {
+			input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+				Prefix: prefix,
+				URL:    input.Breadcrumbs[i].URL + "/" + prefix + "/",
+			})
+		}
+	}
+
+	input.Items = make([]Item, 0)
+
+	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
+		Prefix: prefix,
+		System: true,
+	})
+
+	// TODO add paging
+	for objects.Next() {
+		item := objects.Item()
+		name := item.Key[len(prefix):]
+		input.Items = append(input.Items, Item{
+			Name:   name,
+			Size:   memory.Size(item.System.ContentLength).Base10String(),
+			Prefix: item.IsPrefix,
+		})
+	}
+	if objects.Err() != nil {
+		return objects.Err()
+	}
+
+	return handler.templates.ExecuteTemplate(w, "prefix-listing.html", input)
 }
 
 func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
 	switch {
 	case errors.Is(err, uplink.ErrBucketNotFound):
-		http.Error(w, "bucket not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Bucket not found.")
+		if err != nil {
+			handler.log.Error("error while executing template", zap.Error(err))
+		}
 	case errors.Is(err, uplink.ErrObjectNotFound):
-		http.Error(w, "object not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
+		if err != nil {
+			handler.log.Error("error while executing template", zap.Error(err))
+		}
 	default:
 		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 	}
 }
 
-func parseRequestPath(p string) (*uplink.Access, string, string, error) {
+func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
 	// Split the request path
 	segments := strings.SplitN(p, "/", 3)
-	switch len(segments) {
-	case 1:
+	if len(segments) == 1 {
 		if segments[0] == "" {
-			return nil, "", "", errors.New("missing access")
+			return nil, "", "", "", errors.New("missing access")
 		}
-		return nil, "", "", errors.New("missing bucket")
-	case 2:
-		return nil, "", "", errors.New("missing bucket path")
+		return nil, "", "", "", errors.New("missing bucket")
 	}
-	scopeb58 := segments[0]
-	bucket := segments[1]
-	unencPath := segments[2]
 
-	access, err := uplink.ParseAccess(scopeb58)
-	if err != nil {
-		return nil, "", "", err
+	serializedAccess = segments[0]
+	bucket = segments[1]
+
+	if len(segments) == 3 {
+		key = segments[2]
 	}
-	return access, bucket, unencPath, nil
+
+	access, err := uplink.ParseAccess(serializedAccess)
+	if err != nil {
+		return nil, "", "", "", err
+	}
+	return access, serializedAccess, bucket, key, nil
 }
 
 type objectRanger struct {

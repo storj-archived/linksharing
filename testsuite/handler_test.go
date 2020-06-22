@@ -80,7 +80,7 @@ func TestNewHandler(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
+			testCase.config.Templates = "./../templates/*.html"
 			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
@@ -143,25 +143,32 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			body:   "invalid request: missing bucket\n",
 		},
 		{
-			name:   "GET missing bucket path",
-			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
-		},
-		{
 			name:   "GET object not found",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
-			body:   "object not found\n",
+			body:   "Object not found",
 		},
 		{
 			name:   "GET success",
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
-			body:   "FOO",
+			body:   "foo",
+		},
+		{
+			name:   "GET bucket listing success",
+			method: "GET",
+			path:   path.Join(serializedAccess, "testbucket/", ""),
+			status: http.StatusOK,
+			body:   "test/",
+		},
+		{
+			name:   "GET prefix listing success",
+			method: "GET",
+			path:   path.Join(serializedAccess, "testbucket", "test") + "/",
+			status: http.StatusOK,
+			body:   "foo",
 		},
 		{
 			name:   "HEAD missing access",
@@ -184,18 +191,11 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			body:   "invalid request: missing bucket\n",
 		},
 		{
-			name:   "HEAD missing bucket path",
-			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket path\n",
-		},
-		{
 			name:   "HEAD object not found",
 			method: "HEAD",
 			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
-			body:   "object not found\n",
+			body:   "Object not found",
 		},
 		{
 			name:   "HEAD success",
@@ -212,9 +212,9 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
 			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), linksharing.HandlerConfig{
-				URLBase: "http://localhost",
+				URLBase:   "http://localhost",
+				Templates: "./../templates/*.html",
 			})
 			require.NoError(t, err)
 
@@ -228,7 +228,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			for h, v := range testCase.header {
 				assert.Equal(t, v, w.Header()[h], "%q header does not match", h)
 			}
-			assert.Equal(t, testCase.body, w.Body.String(), "body does not match")
+			assert.Contains(t, w.Body.String(), testCase.body, "body does not match")
 		})
 	}
 }

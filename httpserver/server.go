@@ -67,8 +67,13 @@ func New(log *zap.Logger, config Config) (*Server, error) {
 		return nil, errs.New("unable to listen on %s: %v", config.Address, err)
 	}
 
+	mux := http.NewServeMux()
+	// TODO add static folder location to linksharing configuration
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	mux.Handle("/", config.Handler)
+
 	server := &http.Server{
-		Handler:   config.Handler,
+		Handler:   mux,
 		TLSConfig: config.TLSConfig,
 		ErrorLog:  zap.NewStdLog(log),
 	}

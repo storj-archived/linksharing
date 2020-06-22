@@ -1,0 +1,126 @@
+/* Awesome Linksharing
+link.tardigradeshare.io */
+
+body {
+  padding-bottom: 120px;
+  background: #fcfcfc;
+}
+h1,h2,h3,h4,h5 {
+  font-family: Poppins, sans-serif;
+  font-weight: 700;
+  color: #000;
+}
+p, span, a {
+  font-family: Roboto, sans-serif;
+  font-weight: 300;
+  color: #000;
+}
+
+nav {
+  padding: 20px 0;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #f2f3f4;
+  background: #fff;
+}
+.nav-cta {
+  color: #2583ff !important;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.file-wrapper {
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 40px;
+}
+.card {
+  border: 1px solid #f2f3f4;
+  box-shadow: 0 10px 20px #f2f3f4;
+}
+.img-file {
+  max-height: 120px;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.file-heading {
+  margin-bottom: 20px;
+}
+.file-name {
+  margin-bottom: 20px;
+}
+.file-size {
+  color: #949ba0;
+}
+
+.btn {
+  font-family: Poppins;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  letter-spacing: .25px;
+  color: #fff;
+  text-align: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.btn-primary {
+  color: #fff;
+  background-color: #2583FF;
+  border-color: #2583FF;
+}
+.btn-download {
+  margin-top: 40px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #fff;
+  padding: 12px 16px;
+  border-top: 1px solid #f2f3f4;
+}
+.footer-logo {
+  display: inline-block;
+}
+
+
+.directory {
+  padding: 40px;
+}
+.directory-heading {
+  margin-bottom: 20px;
+}
+.breadcrumbs {
+  margin-bottom: 24px;
+}
+.directory-link:hover {
+  text-decoration: none;
+}
+.directory-link .row {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.directory-link:hover .row {
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+.directory-link:hover .directory-name, .directory-link:hover .directory-size {
+  color: #2583FF;
+}
+.directory-link img {
+  margin-right: 12px;
+  height: 24px;
+  width: 24px;
+  position: relative;
+  top: -2px;
+}
+.directory-size {
+  margin-bottom: 0;
+}
