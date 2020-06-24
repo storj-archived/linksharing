@@ -69,8 +69,9 @@ func New(log *zap.Logger, listener net.Listener, handler *handler.Handler, confi
 	}
 
 	mux := http.NewServeMux()
-	// TODO add static folder location to handler configuration
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
+	// run `make bindata-assets` if AssetFile is missing
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(AssetFile())))
 	mux.Handle("/", handler)
 
 	server := &http.Server{

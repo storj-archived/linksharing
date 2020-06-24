@@ -34,9 +34,6 @@ type Config struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
-
-	// Templates location with html templates.
-	Templates string
 }
 
 // Location represents geographical points
@@ -63,12 +60,18 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		return nil, err
 	}
 
-	if config.Templates == "" {
-		config.Templates = "./templates/*.html"
-	}
-	templates, err := template.ParseGlob(config.Templates)
-	if err != nil {
-		return nil, err
+	// run `make bindata-assets` if AssetNames is missing
+	templates := template.New("root")
+	for _, name := range AssetNames() {
+		child := templates.New(name)
+		data, err := Asset(name)
+		if err != nil {
+			return nil, err
+		}
+		_, err = child.Parse(string(data))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Handler{

@@ -40,8 +40,7 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	handlerConfig := handler.Config{
-		URLBase:   "https://localhost:15001",
-		Templates: "../templates/*.html",
+		URLBase: "https://localhost:15001",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
 	handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)

@@ -45,6 +45,7 @@ help:
 build-dev-deps: ## Install dependencies for builds
 	go get golang.org/x/tools/cover
 	go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo
+	go get github.com/go-bindata/go-bindata
 
 .PHONY: lint
 lint: ## Analyze and find programs in source code
@@ -159,3 +160,11 @@ bump-dependencies:
 	cd testsuite;\
 		go get storj.io/common@master storj.io/storj@master;\
 		go mod tidy
+
+.PHONY: bindata-assets
+bindata-assets:
+	go-bindata -fs -pkg handler -o handler/bindata.templates.go -prefix templates/ templates/...
+	( echo '// lint:file-ignore * generated file'; cat handler/bindata.templates.go ) > bindata.templates.go.tmp && mv bindata.templates.go.tmp handler/bindata.templates.go
+	go-bindata -fs -pkg httpserver  -o httpserver/bindata.static.go -prefix static/ static/...
+	( echo '// lint:file-ignore * generated file'; cat httpserver/bindata.static.go ) > bindata.static.go.tmp && mv bindata.static.go.tmp httpserver/bindata.static.go
+	gofmt -w -s httpserver/bindata.static.go handler/bindata.templates.go
