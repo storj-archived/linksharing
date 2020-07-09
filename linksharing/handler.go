@@ -27,7 +27,7 @@ var (
 	mon = monkit.Package()
 )
 
-// HandlerConfig specifies the handler configuration
+// HandlerConfig specifies the handler configuration.
 type HandlerConfig struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
@@ -37,14 +37,14 @@ type HandlerConfig struct {
 	Templates string
 }
 
-// Handler implements the link sharing HTTP handler
+// Handler implements the link sharing HTTP handler.
 type Handler struct {
 	log       *zap.Logger
 	urlBase   *url.URL
 	templates *template.Template
 }
 
-// NewHandler creates a new link sharing HTTP handler
+// NewHandler creates a new link sharing HTTP handler.
 func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 
 	urlBase, err := parseURLBase(config.URLBase)
@@ -67,7 +67,7 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 	}, nil
 }
 
-// ServeHTTP handles link sharing requests
+// ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// serveHTTP handles the request in full. the error that is returned can
 	// be ignored since it was only added to facilitate monitoring.

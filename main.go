@@ -23,7 +23,7 @@ import (
 	"storj.io/private/process"
 )
 
-// LinkSharing defines link sharing configuration
+// LinkSharing defines link sharing configuration.
 type LinkSharing struct {
 	Address     string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
 	LetsEncrypt bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`

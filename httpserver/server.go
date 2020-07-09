@@ -6,6 +6,7 @@ package httpserver
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -22,7 +23,7 @@ const (
 	DefaultShutdownTimeout = time.Second * 10
 )
 
-// Config holds the HTTP server configuration
+// Config holds the HTTP server configuration.
 type Config struct {
 	// Name is the name of the server. It is only used for logging. It can
 	// be empty.
@@ -44,7 +45,7 @@ type Config struct {
 	ShutdownTimeout time.Duration
 }
 
-// Server is the HTTP server
+// Server is the HTTP server.
 type Server struct {
 	log             *zap.Logger
 	name            string
@@ -113,7 +114,7 @@ func (server *Server) Run(ctx context.Context) (err error) {
 		} else {
 			err = server.server.ServeTLS(server.listener, "", "")
 		}
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
