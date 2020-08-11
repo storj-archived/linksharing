@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// DefaultShutdownTimeout is the default ShutdownTimeout (see Config)
+	// DefaultShutdownTimeout is the default ShutdownTimeout (see Config).
 	DefaultShutdownTimeout = time.Second * 10
 )
 
