@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -89,34 +90,90 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return err
 	}
+	path := strings.TrimPrefix(r.URL.Path, "/")
+	segments := strings.SplitN(r.URL.Path, "/", 3)
+	if segments[1] == "host" { // TODO: unsure if this will be segments[0] when deployed and pointing to linkshare.tardigrade.io/host
+		err = handler.handleHostingService(ctx,w,r,segments)
+	} else {
+		err = handler.handleTraditional(ctx, w, r, path, locationOnly)
+	}
+	return err
+}
 
-	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
+func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request, segments []string) error {
+	records, _ := net.LookupTXT("ls.jenlij.com") // TODO update with r.Host
+	var grant1, grant2, root string
+	for _, record := range records {
+		key := strings.SplitN(record, ":", 2)
+		switch key[0] {
+		case "storj-grant1":
+			grant1 = key[1]
+		case "storj-grant2":
+			grant2 = key[1]
+		case "storj-path1":
+			root = key[1]
+		default:
+			continue
+		}
+	}
+	if grant1 == "" || grant2 == "" || root == "" {
+		return errors.New("missing access or root path in txt record")
+	}
+	serializedAccess := grant1 + grant2
+	file := segments[2] // TODO: unsure if this will be segments[1]
+	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
-		err = fmt.Errorf("invalid request: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
-
-	p, err := uplink.OpenProject(ctx, access)
+	project, err := uplink.OpenProject(ctx, access)
 	if err != nil {
 		handler.handleUplinkErr(w, "open project", err)
 		return err
 	}
 	defer func() {
-		if err := p.Close(); err != nil {
+		if err := project.Close(); err != nil {
+			handler.log.With(zap.Error(err)).Warn("unable to close project")
+		}
+	}()
+	if file == "" || strings.HasSuffix(file, "/") {
+		file = "index.html"
+	}
+	o, err := project.StatObject(ctx, root, file)
+	if err != nil {
+		handler.handleUplinkErr(w, "stat object", err)
+		return err
+	}
+	httpranger.ServeContent(ctx, w, r, file, o.System.Created, newObjectRanger(project, o, root))
+	return nil
+}
+
+func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, locationOnly bool) error{
+	access, serializedAccess, bucket, key, err := parseRequestPath(path)
+	if err != nil {
+		err = fmt.Errorf("invalid request: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+	project, err := uplink.OpenProject(ctx, access)
+	if err != nil {
+		handler.handleUplinkErr(w, "open project", err)
+		return err
+	}
+	defer func() {
+		if err := project.Close(); err != nil {
 			handler.log.With(zap.Error(err)).Warn("unable to close project")
 		}
 	}()
 
 	if key == "" || strings.HasSuffix(key, "/") {
-		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
 		return nil
 	}
 
-	o, err := p.StatObject(ctx, bucket, key)
+	o, err := project.StatObject(ctx, bucket, key)
 	if err != nil {
 		handler.handleUplinkErr(w, "stat object", err)
 		return err
@@ -146,7 +203,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		object := segments[len(segments)-1]
 		w.Header().Set("Content-Disposition", "attachment; filename=\""+object+"\"")
 	}
-	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(project, o, bucket))
 	return nil
 }
 
@@ -227,9 +284,6 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 }
 
 func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
-	// Drop the leading slash, if necessary
-	p = strings.TrimPrefix(p, "/")
-
 	// Split the request path
 	segments := strings.SplitN(p, "/", 3)
 	if len(segments) == 1 {
@@ -241,7 +295,6 @@ func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key
 
 	serializedAccess = segments[0]
 	bucket = segments[1]
-
 	if len(segments) == 3 {
 		key = segments[2]
 	}
