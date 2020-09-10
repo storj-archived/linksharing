@@ -98,10 +98,8 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 	defer mon.Task()(&ctx)(&err)
-	fmt.Println(r.Host)
-	fmt.Println(handler.urlBase.Host)
+
 	if r.Host != handler.urlBase.Host {
-		fmt.Println("unequal")
 		return handler.handleHostingService(ctx,w,r)
 	}
 
@@ -331,9 +329,8 @@ func makeLocation(base *url.URL, reqPath string) string {
 }
 
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-
-	serializedAccess, root, err := handler.getRootAndAccess(r.Host)
-
+	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
+	serializedAccess, root, err := handler.getRootAndAccess(host[0])
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
 		return err
@@ -349,18 +346,18 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-
+	// clean path and reconstruct
 	rootPath := strings.SplitN(root, "/", 2)
 	bucket := rootPath[0]
+	path := strings.TrimPrefix(r.URL.Path, "/")
+	path = strings.TrimSuffix(path, "/")
+	if len(rootPath) == 2 {
+		pathPrefix := strings.TrimPrefix(rootPath[1], "/")
+		pathPrefix = strings.TrimSuffix(pathPrefix, "/")
+		path = pathPrefix + "/" + path
+	}
 
-	// clean path and reconstruct
-	pathPrefix := strings.TrimPrefix(rootPath[1], "/")
-	pathPrefix = strings.TrimSuffix(pathPrefix, "/")
-	pathSuffix := strings.TrimPrefix(r.URL.Path, "/")
-	pathSuffix = strings.TrimSuffix(pathSuffix, "/")
-	path := pathPrefix + "/" + pathSuffix
-
-	if path == "/" {
+	if path == "" {
 		path = "index.html"
 	}
 
@@ -379,12 +376,13 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	defer handler.txtRecords.mu.Unlock()
 	//check cache for access and root
 	record, ok := handler.txtRecords.cache[hostname]
-	if !ok || handler.checkIfExpired(record.timestamp) {
+	if !ok || checkIfExpired(record.timestamp, handler.txtRecords.ttl) {
 		records, err := net.LookupTXT(hostname)
 		if err != nil {
 			return serializedAccess, root, err
 		}
 		serializedAccess, root, err = parseRecords(records)
+
 		if err != nil {
 			return serializedAccess, root, err
 		}
@@ -395,8 +393,8 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	return serializedAccess, root, err
 }
 
-func (handler *Handler) checkIfExpired(timestamp time.Time) bool {
-	if timestamp.Add(handler.txtRecords.ttl).Before(time.Now()){
+func checkIfExpired(timestamp time.Time, ttl time.Duration) bool {
+	if timestamp.Add(ttl).Before(time.Now()){
 		return true
 	}
 	return false
@@ -404,26 +402,27 @@ func (handler *Handler) checkIfExpired(timestamp time.Time) bool {
 
 func parseRecords(records []string)(serializedAccess, root string, err error){
 	grants := map[int]string{}
-	for _, record := range records { // e.g record="storj_grant-1:<access grant section 1>"
-		r := strings.SplitN(record, ":", 2) // e.g. r[0]="storj_grant-1", r[1]=<access grant section 1>
-		if strings.HasPrefix("storj_grant", r[0]) {
-			section := strings.Split(r[0], "-") // e.g. section[0]="storj_grant", section[1]="1"
+	for _, record := range records {
+		r := strings.SplitN(record, ":", 2)
+		if strings.HasPrefix(r[0], "storj_grant") {
+			section := strings.Split(r[0], "-")
 			key, err := strconv.Atoi(section[1])
 			if err != nil {
 				return serializedAccess, root, err
 			}
 			grants[key] = r[1]
-		} else if r[0] == "storj_root" { //e.g. record="storj_root":<bucket or path>
+		} else if r[0] == "storj_root" {
 			root = r[1]
 		}
 	}
+
 	if root == "" {
 		return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
 	}
 
-	for i:=0; i < len(grants); i++ {
+	for i:=1; i <= len(grants); i++ {
 		if grants[i] == ""{
-			return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
+			return serializedAccess, root, errors.New("missing grants") //TODO use handle uplink error
 		}
 		serializedAccess += grants[i]
 	}
