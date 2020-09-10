@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
@@ -17,10 +18,11 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	"storj.io/common/fpath"
-	"storj.io/linksharing/httpserver"
-	"storj.io/linksharing/linksharing"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
+
+	"storj.io/linksharing/httpserver"
+	"storj.io/linksharing/linksharing"
 )
 
 // LinkSharing defines link sharing configuration.
@@ -30,6 +32,7 @@ type LinkSharing struct {
 	CertFile    string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
 	KeyFile     string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
 	PublicURL   string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	TxtRecordTTL time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
 }
 
 var (
@@ -82,7 +85,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL})
+	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL, TxtRecordTTL: runCfg.TxtRecordTTL})
 	if err != nil {
 		return err
 	}

@@ -12,8 +12,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"text/template"
+	"time"
+	"sync"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
@@ -36,6 +39,21 @@ type HandlerConfig struct {
 
 	// Templates location with html templates.
 	Templates string
+
+	// TxtRecordTTL is the duration an entry in the txtRecordCache is valid for
+	TxtRecordTTL time.Duration
+}
+
+type txtRecord struct {
+	access string
+	root string
+	timestamp time.Time
+}
+
+type txtRecords struct {
+	cache map[string]txtRecord
+	ttl time.Duration
+	mu sync.Mutex
 }
 
 // Handler implements the link sharing HTTP handler.
@@ -43,7 +61,7 @@ type Handler struct {
 	log       *zap.Logger
 	urlBase   *url.URL
 	templates *template.Template
-	txtRecordCache map[string]map[string]string
+	txtRecords txtRecords
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -61,13 +79,12 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	var cache = map[string]map[string]string{}
 
 	return &Handler{
 		log:       log,
 		urlBase:   urlBase,
 		templates: templates,
-		txtRecordCache: cache,
+		txtRecords: txtRecords{cache:map[string]txtRecord{}, ttl:config.TxtRecordTTL},
 	}, nil
 }
 
@@ -82,6 +99,10 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	ctx := r.Context()
 	defer mon.Task()(&ctx)(&err)
 
+	if r.Host != handler.urlBase.Host {
+		return handler.handleHostingService(ctx,w,r)
+	}
+
 	locationOnly := false
 
 	switch r.Method {
@@ -93,80 +114,11 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return err
 	}
-	path := strings.TrimPrefix(r.URL.Path, "/")
-	segments := strings.SplitN(r.URL.Path, "/", 3)
-	if segments[1] == "host" { // TODO: unsure if this will be segments[0] when deployed and pointing to linkshare.tardigrade.io/host
-		err = handler.handleHostingService(ctx,w,r,segments)
-	} else {
-		err = handler.handleTraditional(ctx, w, r, path, locationOnly)
-	}
-	return err
+	return handler.handleTraditional(ctx, w, r, locationOnly)
 }
 
-func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request, segments []string) error {
-	// http://ls.jenlij.com:8080/host/
-
-	var serializedAccess, root string
-	var grant1, grant2 string
-	// check cache for access and directory
-	record := handler.txtRecordCache["ls.jenlij.com"] // TODO update with r.Host
-	if record != nil {
-		serializedAccess = record["access"]
-		root = record["dir"]
-	} else {
-		records, _ := net.LookupTXT("ls.jenlij.com") // TODO update with r.Host
-		for _, record := range records {
-			key := strings.SplitN(record, ":", 2)
-			switch key[0] {
-			case "storj-grant1":
-				grant1 = key[1]
-			case "storj-grant2":
-				grant2 = key[1]
-			case "storj-path1":
-				root = key[1]
-			default:
-				continue
-			}
-		}
-		if grant1 == "" || grant2 == "" || root == "" {
-			return errors.New("missing access or root path in txt record")
-		}
-		serializedAccess = grant1 + grant2
-		// update cache
-		handler.txtRecordCache["ls.jenlij.com"] = map[string]string {
-			"access": serializedAccess,
-			"dir": root,
-		}
-	}
-	file := segments[2] // TODO: unsure if this will be segments[1]
-	access, err := uplink.ParseAccess(serializedAccess)
-	if err != nil {
-		return err
-	}
-	project, err := uplink.OpenProject(ctx, access)
-	if err != nil {
-		handler.handleUplinkErr(w, "open project", err)
-		return err
-	}
-	defer func() {
-		if err := project.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close project")
-		}
-	}()
-	if file == "" || strings.HasSuffix(file, "/") {
-		file = "index.html"
-	}
-	o, err := project.StatObject(ctx, root, file)
-	if err != nil {
-		handler.handleUplinkErr(w, "stat object", err)
-		return err
-	}
-	httpranger.ServeContent(ctx, w, r, file, o.System.Created, newObjectRanger(project, o, root))
-	return nil
-}
-
-func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, locationOnly bool) error{
-	access, serializedAccess, bucket, key, err := parseRequestPath(path)
+func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, locationOnly bool) error{
+	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -302,6 +254,8 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 }
 
 func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
+	// Drop the leading slash, if necessary
+	p = strings.TrimPrefix(p, "/")
 	// Split the request path
 	segments := strings.SplitN(p, "/", 3)
 	if len(segments) == 1 {
@@ -372,4 +326,103 @@ func makeLocation(base *url.URL, reqPath string) string {
 	location := *base
 	location.Path = path.Join(location.Path, reqPath)
 	return location.String()
+}
+
+func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+
+	serializedAccess, root, err := handler.getRootAndAccess(r.Host)
+
+	access, err := uplink.ParseAccess(serializedAccess)
+	if err != nil {
+		return err
+	}
+	project, err := uplink.OpenProject(ctx, access)
+	if err != nil {
+		handler.handleUplinkErr(w, "open project", err)
+		return err
+	}
+	defer func() {
+		if err := project.Close(); err != nil {
+			handler.log.With(zap.Error(err)).Warn("unable to close project")
+		}
+	}()
+
+
+	rootPath := strings.SplitN(root, "/", 2)
+	bucket := rootPath[0]
+
+	// clean path and reconstruct
+	pathPrefix := strings.TrimPrefix(rootPath[1], "/")
+	pathPrefix = strings.TrimSuffix(pathPrefix, "/")
+	pathSuffix := strings.TrimPrefix(r.URL.Path, "/")
+	pathSuffix = strings.TrimSuffix(pathSuffix, "/")
+	path := pathPrefix + "/" + pathSuffix
+
+	if path == "/" {
+		path = "index.html"
+	}
+
+	o, err := project.StatObject(ctx, bucket, path)
+	if err != nil {
+		handler.handleUplinkErr(w, "stat object", err)
+		return err
+	}
+	httpranger.ServeContent(ctx, w, r, path, o.System.Created, newObjectRanger(project, o, bucket))
+	return nil
+}
+
+func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error){
+	handler.txtRecords.mu.Lock()
+	defer handler.txtRecords.mu.Unlock()
+	//check cache for access and root
+	record, ok := handler.txtRecords.cache[hostname]
+	if !ok || handler.checkIfExpired(record.timestamp) {
+		records, err := net.LookupTXT(hostname)
+		if err != nil {
+			return serializedAccess, root, err
+		}
+		serializedAccess, root, err = parseRecords(records)
+		if err != nil {
+			return serializedAccess, root, err
+		}
+	}
+	// update cache
+	handler.txtRecords.cache[hostname] = txtRecord{access: serializedAccess, root: root, timestamp: time.Now()}
+
+	return serializedAccess, root, err
+}
+
+func (handler *Handler) checkIfExpired(timestamp time.Time) bool {
+	if timestamp.Add(handler.txtRecords.ttl).Before(time.Now()){
+		return true
+	}
+	return false
+}
+
+func parseRecords(records []string)(serializedAccess, root string, err error){
+	grants := map[int]string{}
+	for _, record := range records { // e.g record="storj_grant-1:<access grant section 1>"
+		r := strings.SplitN(record, ":", 2) // e.g. r[0]="storj_grant-1", r[1]=<access grant section 1>
+		if strings.HasPrefix("storj_grant", r[0]) {
+			section := strings.Split(r[0], "-") // e.g. section[0]="storj_grant", section[1]="1"
+			key, err := strconv.Atoi(section[1])
+			if err != nil {
+				return serializedAccess, root, err
+			}
+			grants[key] = r[1]
+		} else if r[0] == "storj_root" { //e.g. record="storj_root":<bucket or path>
+			root = r[1]
+		}
+	}
+	if root == "" {
+		return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
+	}
+
+	for i:=0; i < len(grants); i++ {
+		if grants[i] == ""{
+			return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
+		}
+		serializedAccess += grants[i]
+	}
+	return serializedAccess, root, nil
 }
