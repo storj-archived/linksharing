@@ -98,8 +98,10 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 	defer mon.Task()(&ctx)(&err)
-
+	fmt.Println(r.Host)
+	fmt.Println(handler.urlBase.Host)
 	if r.Host != handler.urlBase.Host {
+		fmt.Println("unequal")
 		return handler.handleHostingService(ctx,w,r)
 	}
 
@@ -367,6 +369,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		handler.handleUplinkErr(w, "stat object", err)
 		return err
 	}
+
 	httpranger.ServeContent(ctx, w, r, path, o.System.Created, newObjectRanger(project, o, bucket))
 	return nil
 }
