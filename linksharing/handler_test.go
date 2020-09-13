@@ -27,10 +27,10 @@ func TestCheckIfExpired(t *testing.T) {
 }
 
 func TestParseRecords(t *testing.T){
-	records := []string{"storj_grant-2:hijklmnop", "storj_root:linkshare/test", "storj_grant-1:abcdefg", }
+	records := []string{"storj_grant-2:grant2", "storj_root:linkshare/test", "storj_grant-1:grant1", }
 	serializedAccess, root, err := parseRecords(records)
 	require.NoError(t, err)
-	assert.Equal(t, "abcdefghijklmnop", serializedAccess)
+	assert.Equal(t, "grant1grant2", serializedAccess)
 	assert.Equal(t, "linkshare/test", root)
 }
 

@@ -20,7 +20,6 @@ import (
 	"storj.io/common/fpath"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
-
 	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/linksharing"
 )

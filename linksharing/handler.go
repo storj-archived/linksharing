@@ -14,9 +14,9 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
-	"sync"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
@@ -45,22 +45,22 @@ type HandlerConfig struct {
 }
 
 type txtRecord struct {
-	access string
-	root string
+	access    string
+	root      string
 	timestamp time.Time
 }
 
 type txtRecords struct {
 	cache map[string]txtRecord
-	ttl time.Duration
-	mu sync.Mutex
+	ttl   time.Duration
+	mu    sync.Mutex
 }
 
 // Handler implements the link sharing HTTP handler.
 type Handler struct {
-	log       *zap.Logger
-	urlBase   *url.URL
-	templates *template.Template
+	log        *zap.Logger
+	urlBase    *url.URL
+	templates  *template.Template
 	txtRecords txtRecords
 }
 
@@ -81,10 +81,10 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 	}
 
 	return &Handler{
-		log:       log,
-		urlBase:   urlBase,
-		templates: templates,
-		txtRecords: txtRecords{cache:map[string]txtRecord{}, ttl:config.TxtRecordTTL},
+		log:        log,
+		urlBase:    urlBase,
+		templates:  templates,
+		txtRecords: txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
 	}, nil
 }
 
@@ -100,7 +100,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	defer mon.Task()(&ctx)(&err)
 
 	if r.Host != handler.urlBase.Host {
-		return handler.handleHostingService(ctx,w,r)
+		return handler.handleHostingService(ctx, w, r)
 	}
 
 	locationOnly := false
@@ -117,7 +117,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	return handler.handleTraditional(ctx, w, r, locationOnly)
 }
 
-func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, locationOnly bool) error{
+func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, locationOnly bool) error {
 	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
@@ -371,7 +371,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	return nil
 }
 
-func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error){
+func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error) {
 	handler.txtRecords.mu.Lock()
 	defer handler.txtRecords.mu.Unlock()
 	//check cache for access and root
@@ -394,13 +394,13 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 }
 
 func checkIfExpired(timestamp time.Time, ttl time.Duration) bool {
-	if timestamp.Add(ttl).Before(time.Now()){
+	if timestamp.Add(ttl).Before(time.Now()) {
 		return true
 	}
 	return false
 }
 
-func parseRecords(records []string)(serializedAccess, root string, err error){
+func parseRecords(records []string) (serializedAccess, root string, err error) {
 	grants := map[int]string{}
 	for _, record := range records {
 		r := strings.SplitN(record, ":", 2)
@@ -420,8 +420,8 @@ func parseRecords(records []string)(serializedAccess, root string, err error){
 		return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
 	}
 
-	for i:=1; i <= len(grants); i++ {
-		if grants[i] == ""{
+	for i := 1; i <= len(grants); i++ {
+		if grants[i] == "" {
 			return serializedAccess, root, errors.New("missing grants") //TODO use handle uplink error
 		}
 		serializedAccess += grants[i]
