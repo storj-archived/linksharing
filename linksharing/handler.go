@@ -331,6 +331,9 @@ func makeLocation(base *url.URL, reqPath string) string {
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
 	serializedAccess, root, err := handler.getRootAndAccess(host[0])
+	if err != nil {
+		return err
+	}
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
 		return err
