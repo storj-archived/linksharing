@@ -61,7 +61,7 @@ type Handler struct {
 	log        *zap.Logger
 	urlBase    *url.URL
 	templates  *template.Template
-	txtRecords txtRecords
+	txtRecords *txtRecords
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -84,7 +84,7 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		log:        log,
 		urlBase:    urlBase,
 		templates:  templates,
-		txtRecords: txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
+		txtRecords: &txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
 	}, nil
 }
 
@@ -332,10 +332,12 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
 	serializedAccess, root, err := handler.getRootAndAccess(host[0])
 	if err != nil {
+		//todo handle error
 		return err
 	}
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
+		//todo handle error
 		return err
 	}
 	project, err := uplink.OpenProject(ctx, access)
@@ -379,7 +381,9 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	defer handler.txtRecords.mu.Unlock()
 	//check cache for access and root
 	record, ok := handler.txtRecords.cache[hostname]
-	if !ok || checkIfExpired(record.timestamp, handler.txtRecords.ttl) {
+	// do a txt record lookup if the cache doesn't contain a corresponding entry or if the entry is expired
+	if !ok || record.timestamp.Add(handler.txtRecords.ttl).Before(time.Now()) {
+		fmt.Print(time.Now())
 		records, err := net.LookupTXT(hostname)
 		if err != nil {
 			return serializedAccess, root, err
@@ -394,13 +398,6 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	handler.txtRecords.cache[hostname] = txtRecord{access: serializedAccess, root: root, timestamp: time.Now()}
 
 	return serializedAccess, root, err
-}
-
-func checkIfExpired(timestamp time.Time, ttl time.Duration) bool {
-	if timestamp.Add(ttl).Before(time.Now()) {
-		return true
-	}
-	return false
 }
 
 func parseRecords(records []string) (serializedAccess, root string, err error) {
