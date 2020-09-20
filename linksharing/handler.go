@@ -379,7 +379,8 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	defer handler.txtRecords.mu.Unlock()
 	//check cache for access and root
 	record, ok := handler.txtRecords.cache[hostname]
-	if !ok || checkIfExpired(record.timestamp, handler.txtRecords.ttl) {
+	// do a txt record lookup if the cache doesn't contain a corresponding entry or if the entry is expired
+	if !ok || record.timestamp.Add(handler.txtRecords.ttl).Before(time.Now()) {
 		records, err := net.LookupTXT(hostname)
 		if err != nil {
 			return serializedAccess, root, err
@@ -394,13 +395,6 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	handler.txtRecords.cache[hostname] = txtRecord{access: serializedAccess, root: root, timestamp: time.Now()}
 
 	return serializedAccess, root, err
-}
-
-func checkIfExpired(timestamp time.Time, ttl time.Duration) bool {
-	if timestamp.Add(ttl).Before(time.Now()) {
-		return true
-	}
-	return false
 }
 
 func parseRecords(records []string) (serializedAccess, root string, err error) {
