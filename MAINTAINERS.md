@@ -49,15 +49,4 @@ Examples of Release Candidates:
   - Describe the changes since the previous release in a human-readable way.
     Only those changes that affect users. No need to describe refactorings,
     etc.
-  - Select the `This is a pre-release` checkbox. This checkbox must always be
-    selected at this point, even if this is an official release. We will
-    deselelect it after we upload the binaries to the release. Otherwise, the
-    links to the binaries of the latest release will be broken in the
-    documentation and other places.
   - Click the `Publish release` button.
-7. Update the Github release:
-  - Go to https://github.com/storj/linksharing/releases.
-  - Cick the `Edit` button on the release.
-  - If this is an official release, deselect the `This is a pre-release`
-    checkbox.
-  - Click the `Update release` button.
