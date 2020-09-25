@@ -112,9 +112,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 
 	if key == "" || strings.HasSuffix(key, "/") {
 		if !strings.HasSuffix(r.URL.Path, "/") {
-			handler.log.With(zap.Error(err)).Warn("path for a directory must end in /")
-			handler.handleUplinkErr(w, "list prefix", ErrPath)
-			return nil
+			http.Redirect(w, r, r.URL.Path + "/", 301)
 		}
 		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
 		if err != nil {
