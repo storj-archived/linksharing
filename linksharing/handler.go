@@ -25,7 +25,6 @@ import (
 
 var (
 	mon = monkit.Package()
-	ErrPath = errors.New("path for a directory must end in /")
 )
 
 // HandlerConfig specifies the handler configuration.
@@ -109,10 +108,9 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 	}()
 
-
 	if key == "" || strings.HasSuffix(key, "/") {
 		if !strings.HasSuffix(r.URL.Path, "/") {
-			http.Redirect(w, r, r.URL.Path + "/", 301)
+			http.Redirect(w, r, r.URL.Path+"/", 301)
 		}
 		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
 		if err != nil {
@@ -222,12 +220,6 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	case errors.Is(err, uplink.ErrObjectNotFound):
 		w.WriteHeader(http.StatusNotFound)
 		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
-		if err != nil {
-			handler.log.Error("error while executing template", zap.Error(err))
-		}
-	case errors.Is(err, ErrPath):
-		w.WriteHeader(http.StatusNotFound)
-		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Unable to list objects. Check your path for the required trailing '/'.")
 		if err != nil {
 			handler.log.Error("error while executing template", zap.Error(err))
 		}
