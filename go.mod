@@ -6,9 +6,10 @@ require (
 	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/calebcase/tmpfile v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/oschwald/maxminddb-golang v1.7.0
 	github.com/spacemonkeygo/monkit/v3 v3.0.7-0.20200515175308-072401d8c752
 	github.com/spf13/cobra v1.0.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/zeebo/errs v1.2.2
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
