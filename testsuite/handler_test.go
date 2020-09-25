@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,8 +14,9 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/linksharing"
 	"storj.io/storj/private/testplanet"
+
+	"storj.io/linksharing/linksharing"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -159,8 +159,15 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		{
 			name:   "GET bucket listing success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket/", ""),
+			path:   path.Join(serializedAccess, "testbucket") + "/",
 			status: http.StatusOK,
+			body:   "test/",
+		},
+		{
+			name:   "GET bucket listing redirect",
+			method: "GET",
+			path:   path.Join(serializedAccess, "testbucket"),
+			status: http.StatusMovedPermanently,
 			body:   "test/",
 		},
 		{
