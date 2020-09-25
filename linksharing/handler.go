@@ -110,7 +110,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 
 	if key == "" || strings.HasSuffix(key, "/") {
 		if !strings.HasSuffix(r.URL.Path, "/") {
-			http.Redirect(w, r, r.URL.Path+"/", 301)
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 		}
 		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
 		if err != nil {
