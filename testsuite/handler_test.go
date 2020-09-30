@@ -168,7 +168,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "GET",
 			path:   path.Join(serializedAccess, "testbucket"),
 			status: http.StatusMovedPermanently,
-			body:   "test/",
+			body:   "Moved Permanently",
 		},
 		{
 			name:   "GET prefix listing success",
