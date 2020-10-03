@@ -383,7 +383,6 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 	record, ok := handler.txtRecords.cache[hostname]
 	// do a txt record lookup if the cache doesn't contain a corresponding entry or if the entry is expired
 	if !ok || record.timestamp.Add(handler.txtRecords.ttl).Before(time.Now()) {
-		fmt.Print(time.Now())
 		records, err := net.LookupTXT(hostname)
 		if err != nil {
 			return serializedAccess, root, err
