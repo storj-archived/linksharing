@@ -136,7 +136,12 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 	}()
 
 	if key == "" || strings.HasSuffix(key, "/") {
-		err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, key)
+		if !strings.HasSuffix(r.URL.Path, "/") {
+			// redirect because directories must have a trailing '/' for the listed hyperlinks to generate correctly
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			return nil
+		}
+		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
