@@ -334,8 +334,7 @@ func makeLocation(base *url.URL, reqPath string) string {
 }
 
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
-	serializedAccess, root, err := handler.getRootAndAccess(host[0])
+	serializedAccess, root, err := handler.getRootAndAccess(r.Host)
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
