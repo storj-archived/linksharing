@@ -342,7 +342,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	}
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
-		handler.handleUplinkErr(w,"parse access", err)
+		handler.handleUplinkErr(w, "parse access", err)
 		return err
 	}
 	project, err := uplink.OpenProject(ctx, access)
