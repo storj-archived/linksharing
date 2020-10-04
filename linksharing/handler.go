@@ -141,7 +141,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return nil
 		}
-		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
@@ -337,12 +337,13 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
 	serializedAccess, root, err := handler.getRootAndAccess(host[0])
 	if err != nil {
-		//todo handle error
+		handler.log.Error("unable to handle request", zap.Error(err))
+		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
 	}
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
-		//todo handle error
+		handler.handleUplinkErr(w,"parse access", err)
 		return err
 	}
 	project, err := uplink.OpenProject(ctx, access)
@@ -421,12 +422,12 @@ func parseRecords(records []string) (serializedAccess, root string, err error) {
 	}
 
 	if root == "" {
-		return serializedAccess, root, errors.New("missing root path in txt record") //TODO use handle uplink error
+		return serializedAccess, root, errors.New("missing root path in txt record")
 	}
 
 	for i := 1; i <= len(grants); i++ {
 		if grants[i] == "" {
-			return serializedAccess, root, errors.New("missing grants") //TODO use handle uplink error
+			return serializedAccess, root, errors.New("missing grants")
 		}
 		serializedAccess += grants[i]
 	}
