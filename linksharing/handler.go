@@ -124,6 +124,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
+
 	project, err := uplink.OpenProject(ctx, access)
 	if err != nil {
 		handler.handleUplinkErr(w, "open project", err)
@@ -261,6 +262,7 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
+
 	// Split the request path
 	segments := strings.SplitN(p, "/", 3)
 	if len(segments) == 1 {
@@ -272,6 +274,7 @@ func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key
 
 	serializedAccess = segments[0]
 	bucket = segments[1]
+
 	if len(segments) == 3 {
 		key = segments[2]
 	}
@@ -340,11 +343,13 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
 	}
+
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
 		handler.handleUplinkErr(w, "parse access", err)
 		return err
 	}
+
 	project, err := uplink.OpenProject(ctx, access)
 	if err != nil {
 		handler.handleUplinkErr(w, "open project", err)
@@ -384,8 +389,10 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error) {
 	handler.txtRecords.mu.Lock()
 	defer handler.txtRecords.mu.Unlock()
+
 	//check cache for access and root
 	record, ok := handler.txtRecords.cache[hostname]
+
 	// do a txt record lookup if the cache doesn't contain a corresponding entry or if the entry is expired
 	if !ok || record.timestamp.Add(handler.txtRecords.ttl).Before(time.Now()) {
 		records, err := net.LookupTXT(hostname)
@@ -398,6 +405,7 @@ func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, roo
 			return serializedAccess, root, err
 		}
 	}
+
 	// update cache
 	handler.txtRecords.cache[hostname] = txtRecord{access: serializedAccess, root: root, timestamp: time.Now()}
 
