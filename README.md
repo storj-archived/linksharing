@@ -55,3 +55,11 @@ After configuration is complete, running the link sharing is as simple as:
 ```
 $ linksharing run
 ```
+
+## Custom URL configuration and static site hosting
+[DRAFT] A user can now point their own domain name at their shared files and static websites. 
+All one needs to do is add their access token and the root of their shared path to their external 
+DNS registrar and CNAME to link.tardigradeshare.io. This uplink command will assist in the correct 
+configuration. One caveat is that we don't recommend utilizing this service for high traffic sites 
+- due to security and cost-efficiency concerns - until we enable access to key shortening and page 
+caching. Remember to set everything to READONLY.

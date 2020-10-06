@@ -337,7 +337,10 @@ func makeLocation(base *url.URL, reqPath string) string {
 }
 
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	serializedAccess, root, err := handler.getRootAndAccess(r.Host)
+	//serializedAccess, root, err := handler.getRootAndAccess(r.Host)
+	host := strings.SplitN(r.Host, ":", 2) //todo remove after testing
+	serializedAccess, root, err := handler.getRootAndAccess(host[0])
+
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
@@ -361,15 +364,15 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-	// clean path and reconstruct
-	rootPath := strings.SplitN(root, "/", 2)
+	// e.g. http://mydomain.com/folder2/index.html with root="bucket1/folder1"
+	rootPath := strings.SplitN(root, "/", 2) // e.g. rootPath=[bucket1, folder1]
 	bucket := rootPath[0]
-	path := strings.TrimPrefix(r.URL.Path, "/")
+	path := strings.TrimPrefix(r.URL.Path, "/") // e.g. path = "folder2/index.html
 	path = strings.TrimSuffix(path, "/")
 	if len(rootPath) == 2 {
-		pathPrefix := strings.TrimPrefix(rootPath[1], "/")
+		pathPrefix := strings.TrimPrefix(rootPath[1], "/") // e.g. pathPrefix = "folder1"
 		pathPrefix = strings.TrimSuffix(pathPrefix, "/")
-		path = pathPrefix + "/" + path
+		path = pathPrefix + "/" + path // e.g. path="folder1/folder2/index.html"
 	}
 
 	if path == "" {
@@ -386,32 +389,51 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	return nil
 }
 
+// getRootAndAccess
 func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error) {
-	handler.txtRecords.mu.Lock()
-	defer handler.txtRecords.mu.Unlock()
-
-	//check cache for access and root
-	record, ok := handler.txtRecords.cache[hostname]
-
-	// do a txt record lookup if the cache doesn't contain a corresponding entry or if the entry is expired
-	if !ok || record.timestamp.Add(handler.txtRecords.ttl).Before(time.Now()) {
-		records, err := net.LookupTXT(hostname)
-		if err != nil {
-			return serializedAccess, root, err
-		}
-		serializedAccess, root, err = parseRecords(records)
-
-		if err != nil {
-			return serializedAccess, root, err
-		}
+	record, exists := handler.checkCache(hostname)
+	if exists {
+		return record.access, record.root, nil
 	}
-
-	// update cache
-	handler.txtRecords.cache[hostname] = txtRecord{access: serializedAccess, root: root, timestamp: time.Now()}
+	serializedAccess, root, err = getRemoteRecord(hostname)
+	if err != nil {
+		return serializedAccess, root, err
+	}
+	handler.updateCache(hostname, serializedAccess, root)
 
 	return serializedAccess, root, err
 }
 
+// checkCache checks the txt record cache to see if we have a valid access grant and root path.
+func (handler *Handler) checkCache(hostname string) (record txtRecord, exists bool) {
+	handler.txtRecords.mu.Lock()
+	defer handler.txtRecords.mu.Unlock()
+
+	record, ok := handler.txtRecords.cache[hostname]
+	if ok && !recordIsExpired(record, handler.txtRecords.ttl) {
+		return record, true
+	}
+	return record, false
+}
+
+// recordIsExpired is a helper function that checks whether an entry in the txtRecord cache is expired
+// A record is expired if its last timestamp plus the ttl was in the past.
+func recordIsExpired(record txtRecord, ttl time.Duration) bool {
+	return record.timestamp.Add(ttl).Before(time.Now())
+}
+
+// getRemoteRecord does an txt record lookup for the hostname on the dns server.
+func getRemoteRecord(hostname string) (access, root string, err error){
+	records, err := net.LookupTXT(hostname)
+	if err != nil {
+		return access, root, err
+	}
+	return parseRecords(records)
+}
+
+// parseRecords transforms the data from the hostname's external TXT records
+// For example, a hostname may have the following TXT records: "storj_grant-1:abcd", "storj_grant-2:efgh", "storj_root:mybucket/folder".
+// parseRecords then will return serializedAccess="abcdefgh" and root="mybucket/folder"
 func parseRecords(records []string) (serializedAccess, root string, err error) {
 	grants := map[int]string{}
 	for _, record := range records {
@@ -439,4 +461,12 @@ func parseRecords(records []string) (serializedAccess, root string, err error) {
 		serializedAccess += grants[i]
 	}
 	return serializedAccess, root, nil
+}
+
+// updateCache is a helper function that updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
+func (handler *Handler) updateCache(hostname, access, root string) {
+	handler.txtRecords.mu.Lock()
+	defer handler.txtRecords.mu.Unlock()
+
+	handler.txtRecords.cache[hostname] = txtRecord{access: access, root: root, timestamp: time.Now()}
 }
