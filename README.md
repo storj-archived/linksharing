@@ -56,10 +56,25 @@ After configuration is complete, running the link sharing is as simple as:
 $ linksharing run
 ```
 
-## Custom URL configuration and static site hosting
-[DRAFT] A user can now point their own domain name at their shared files and static websites. 
-All one needs to do is add their access token and the root of their shared path to their external 
-DNS registrar and CNAME to link.tardigradeshare.io. This uplink command will assist in the correct 
-configuration. One caveat is that we don't recommend utilizing this service for high traffic sites 
-- due to security and cost-efficiency concerns - until we enable access to key shortening and page 
-caching. Remember to set everything to READONLY.
+## Custom URL configuration and static site hosting*
+
+You can use your own domain for your linksharing and static site hosting with the following setup. 
+* We don't recommend utilizing this service for high traffic sites - due to security and cost-efficiency concerns - until we enable access to key shortening and page 
+caching.
+1. Share your READONLY file or directory via `uplink share --readonly --dns sj://<your path>`. 
+The `--dns` flag will print out the dns information that you will need.
+
+2. Create your CNAME with our linksharing common URL (https://link.tardigradeshare.io).
+
+3. Create 3 TXT records with the following info. You will need to add the entire string (including the prefix) to your records.
+    a. `storj_grant-1`
+    b. `storj_grant-2`
+    c. `storj_root`
+
+4. That's it! You should be all set to share your files or directories with your custom domain.
+
+Examples:
+
+"bucket/image.png"
+"bucket" -> index.html
+"bucket/folder" -> myfiles
