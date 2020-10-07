@@ -1,11 +1,7 @@
 /* Awesome Linksharing
 link.tardigradeshare.io */
 
-body {
-  padding-bottom: 120px;
-  background: #fcfcfc;
-}
-h1,h2,h3,h4,h5 {
+h1,h2,h3,h4,h5,h6 {
   font-family: Poppins, sans-serif;
   font-weight: 700;
   color: #000;
@@ -28,6 +24,44 @@ nav {
   text-decoration: underline;
 }
 
+.bg-grey {
+  background: #F4F5F7;
+}
+
+.logo {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 140px;
+}
+
+.file-title-top {
+  background: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+.file-title-sidebar {
+  display: inline-block;
+  margin-left: 6px;
+  position: relative;
+  top: 16px;
+  max-width: 90%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-light {
+  background: #fff;
+}
+.border-2 {
+  border-width: 2px;
+}
+
 .file-wrapper {
   padding: 10px;
   border-radius: 10px;
@@ -35,7 +69,7 @@ nav {
 }
 .card {
   border: 1px solid #f2f3f4;
-  box-shadow: 0 10px 20px #f2f3f4;
+  border-radius: 10px;
 }
 .img-file {
   max-height: 120px;
@@ -60,10 +94,7 @@ nav {
   line-height: 20px;
   text-align: center;
   letter-spacing: .25px;
-  color: #fff;
   text-align: center;
-  padding-top: 12px;
-  padding-bottom: 12px;
 }
 .btn-primary {
   color: #fff;
@@ -79,15 +110,13 @@ nav {
 }
 
 footer {
-  position: fixed;
-  bottom: 0;
+  background: #133e9c;
+  background-image: url('/static/img/footer-bg.svg'), radial-gradient(56.25% 326.37% at 50% 50%, #002674 0%, #000000 100%);
+  background-size: cover;
   width: 100%;
-  background: #fff;
-  padding: 12px 16px;
-  border-top: 1px solid #f2f3f4;
-}
-.footer-logo {
-  display: inline-block;
+  padding-top: 80px;
+  padding-bottom: 80px;
+  text-align: center;
 }
 
 

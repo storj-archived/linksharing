@@ -1,26 +1,71 @@
 {{template "header.html"}}
 
-<div class="col-xl-9 col-lg-10">
-<div class="card">
-  <section class="file-wrapper text-center">
-      <!-- Example for a preview video -->
-      <!-- <div class="embed-responsive embed-responsive-16by9">
-              <iframe class="embed-responsive-item" src="?view" allowfullscreen></iframe>
-            </div> -->
-      <!-- Use this img if file is not image or video and cannot be previewed -->
-      <img src="/static/img/file.png" class="img-fluid img-file" alt="File icon">
-      
-      <!-- Example for a preview image -->
-      <!-- <img src="img/the-new-york-public-library-yEauzeZU6xo-unsplash.jpg" class="img-fluid img-preview" alt=""> -->
-  </section>
+<div class="container-fluid">
+  <div class="row">
 
-  <section class="file-info text-center">
-    <h2 class="file-heading">Download File</h2>
-    <p class="file-name">{{.Name}}</p>
-    <p class="file-size">{{.Size}}</p>
-    <a class="btn btn-primary btn-block btn-download" href="?download">Download</a>
-  </section>
-</div>
+    <div class="col-lg-9 bg-grey">
+
+      <div class="row">
+        <div class="col text-center">
+          <img src="/static/img/logo.svg" class="logo" alt="Logo">
+          <p class="file-title-top text-center">{{.Name}}</p>
+        </div>
+      </div>
+
+      <div class="row justify-content-center mt-4">
+        <div class="col-md-10">
+          <div class="card p-5">
+            <div class="row">
+              <div class="col text-center mb-5">
+                <h6>Real-time Distribution of <span class="text-muted">{{.Name}}</span> on Tardigrade</h6>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-lg-8 text-center">
+                <img src="/static/img/world.svg" alt="World map" class="img-fluid">
+              </div>
+              <div class="col-lg-4">
+                <p class="mt-4"><strong>Status: <span>Getting file pieces...</span></strong></p>
+                <p class="mt-4"><strong>Download:</strong> <span>11.2 MB / 22.71 MB</span></p>
+                <p class="mt-4"><strong>File Pieces:</strong> <span>77 / 160</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-10 col-md-8 text-center py-5">
+          <h5 class="mb-3">You’re Downloading this File From All Over the World</h5>
+          <p>Tardigrade distributes pieces of this file on a global network, meaning it isn’t being downloaded from a data center, it’s being downloaded from nodes all over the world. The map above shows the location of this file’s pieces.</p>
+          <a href="http://tardigrade.io/how-it-works" target="_blank" rel="noopener" class="btn btn-light btn-lg text-primary px-4 mt-2 mb-4">Learn More About Tardigrade</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-3">
+      <div class="row">
+        <div class="col mb-5 mt-3">
+          <a href="?download" class="btn btn-outline-secondary"><img src="/static/img/icon-download-blue.svg" alt="Download"></a>
+          <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
+          <a href="https://tardigrade.io/signup" class="btn btn-outline-primary">Sign Up</a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="file">
+            <img src="/static/img/icon-file.svg" alt="File icon">
+            <h5 class="file-title-sidebar">{{.Name}}</h5>
+          </div>
+          <p class="file-size mt-3">{{.Size}}</p>
+          <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
+          <a href="#" class="btn btn-outline-primary btn-lg btn-block mb-4 border-2">Share <img src="/static/img/icon-share.svg" alt="Share" class="ml-2"></a>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 {{template "footer.html"}}
