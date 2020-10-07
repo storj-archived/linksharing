@@ -44,12 +44,17 @@ nav {
   margin-top: 10px;
 }
 
+.file-title-distribution {
+  font-family: Poppins, sans-serif;
+  font-weight: 700;
+}
+
 .file-title-sidebar {
   display: inline-block;
   margin-left: 6px;
   position: relative;
   top: 16px;
-  max-width: 90%;
+  max-width: 80%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -101,12 +106,31 @@ nav {
   background-color: #2583FF;
   border-color: #2583FF;
 }
+.btn-primary:hover {
+  color: #fff;
+  background-color: #0059d0;
+  border-color: #0059d0;
+}
 .btn-download {
   margin-top: 40px;
   padding-top: 20px;
   padding-bottom: 20px;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+}
+.btn-outline-secondary {
+  border-color: #c3c8cf;
+  color: #697687;
+}
+.btn-outline-secondary:hover {
+  color: #6c757d;
+  background-color: #f4f5f7;
+  border-color: #6c757d;
+}
+.btn-outline-primary:hover {
+  background-color: #0059d0;
+  color: #fff;
+  border-color: #0059d0;
 }
 
 footer {
