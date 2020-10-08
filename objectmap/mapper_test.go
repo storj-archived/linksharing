@@ -5,7 +5,6 @@ package objectmap
 
 import (
 	"errors"
-	"github.com/zeebo/assert"
 	"net"
 	"testing"
 
@@ -78,10 +77,4 @@ func TestIPDB_GetIPInfos(t *testing.T) {
 			require.EqualValues(t, testCase.expected, got)
 		})
 	}
-}
-
-func Test_ASD(t *testing.T) {
-	asd, err := net.LookupHost("storj2.finnet.co.uk")
-	assert.NoError(t, err)
-	assert.NotNil(t, asd)
 }

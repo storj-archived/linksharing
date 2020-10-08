@@ -37,9 +37,6 @@ type HandlerConfig struct {
 
 	// Templates location with html templates.
 	Templates string
-
-	// GeolocationDBPath location with maxmind DB file.
-	GeolocationDBPath string
 }
 
 // Location represents geographical points
@@ -73,7 +70,7 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
-	mapper, err := objectmap.NewIPDB(config.GeolocationDBPath)
+	mapper, err := objectmap.NewIPDB("./static/maxMindDB.mmdb")
 	if err != nil {
 		return nil, err
 	}
