@@ -5,7 +5,7 @@ go 1.13
 replace storj.io/linksharing => ../
 
 require (
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.15.0
 	google.golang.org/grpc v1.28.0 // indirect
 	storj.io/common v0.0.0-20200903093850-858d8a4eccde

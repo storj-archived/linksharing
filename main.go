@@ -25,11 +25,12 @@ import (
 
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
-	Address     string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
-	LetsEncrypt bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
-	CertFile    string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
-	KeyFile     string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL   string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	Address       string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
+	LetsEncrypt   bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
+	CertFile      string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
+	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
+	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
 }
 
 var (
@@ -82,7 +83,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL})
+	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL, GeolocationDBPath: runCfg.GeoLocationDB})
 	if err != nil {
 		return err
 	}
