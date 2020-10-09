@@ -140,12 +140,15 @@ nav {
 }
 
 .input-url {
-  background: #0C2546;
+  background: #0C2546 !important;
   color: #fff;
   border: 0;
   font-size: 14px;
   height: 60px;
   padding-right: 90px;
+}
+.input-url:focus {
+  color: #fff;
 }
 
 footer {
