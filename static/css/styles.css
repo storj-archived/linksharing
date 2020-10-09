@@ -132,6 +132,21 @@ nav {
   color: #fff;
   border-color: #0059d0;
 }
+.btn-copy {
+  position: absolute;
+  top: 58px;
+  right: 28px;
+  color: #0068DC;
+}
+
+.input-url {
+  background: #0C2546;
+  color: #fff;
+  border: 0;
+  font-size: 14px;
+  height: 60px;
+  padding-right: 90px;
+}
 
 footer {
   background: #133e9c;
