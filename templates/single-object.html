@@ -47,8 +47,7 @@
                   for (var i = 0; i < routes.length; i++) {
                     r = routes[i]
 
-                    L.circle([r.Latitude, r.Longitude], circleOpts).addTo(mymap)
-                            .bindPopup("<p>" + r.Latitude + "," + r.Longitude + "</p>");
+                    L.circle([r.Latitude, r.Longitude], circleOpts).addTo(mymap);
                   }
                 </script>
               </div>
