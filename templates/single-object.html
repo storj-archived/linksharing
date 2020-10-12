@@ -32,7 +32,11 @@
                             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
                     id: 'boshevski/ckg4162p90kie19nzjdzxhwb9',
                     tileSize: 512,
-                    zoomOffset: -1
+                    zoomOffset: -1,
+                    // this map option disables world wrapping. by default, it is false.
+                    continuousWorld: false,
+                    // this option disables loading tiles outside of the world bounds.
+                    noWrap: true
                   }).addTo(mymap);
 
                   var routes = {{.Locations}};
