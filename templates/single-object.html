@@ -106,6 +106,9 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content text-center border-0 p-5">
       <div class="modal-header border-0">
+        <div class="copy-notification" id="copyNotification">
+          <p class="copy-notification-text">Link Copied!</p>
+        </div>
         <h5 class="modal-title mx-auto" id="shareModalLabel">Share {{.Name}}</h5>
         <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
@@ -135,10 +138,12 @@
       document.getElementById("backdrop").style.display = "none"
       document.getElementById("shareModal").style.display = "none"
       document.getElementById("shareModal").className += document.getElementById("shareModal").className.replace("show", "")
+      document.getElementById("copyNotification").style.display = "none"
   }
 
   function copy() {
     navigator.clipboard.writeText(input.value)
+    document.getElementById("copyNotification").style.display = "block"
   }
 
   let modal = document.getElementById('shareModal');
