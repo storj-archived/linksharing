@@ -114,7 +114,7 @@
       <div class="modal-body pt-0">
         <p>Just copy and paste the link below to share this file.</p>
         <input class="form-control form-control-lg mt-4 input-url" type="url" id="url" readonly>
-        <button type="button" name="copy" class="btn btn-light btn-copy">Copy</button>
+        <button type="button" name="copy" class="btn btn-light btn-copy" onclick="copy()">Copy</button>
       </div>
       <div class="modal-footer border-0">
         <button type="button" class="btn btn-primary btn-block btn-lg" data-dismiss="modal" onclick="closeModal()">Done</button>
@@ -137,12 +137,21 @@
       document.getElementById("shareModal").className += document.getElementById("shareModal").className.replace("show", "")
   }
 
-  var modal = document.getElementById('shareModal');
+  function copy() {
+    navigator.clipboard.writeText(input.value)
+  }
+
+  let modal = document.getElementById('shareModal');
+  let input = document.getElementById('url');
 
   window.onclick = function (event) {
       if (event.target == modal) {
           closeModal()
       }
+  }
+
+  window.onload = () => {
+    input.setAttribute('value', window.location.href);
   }
 </script>
 
