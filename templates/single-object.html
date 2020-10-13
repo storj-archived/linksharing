@@ -1,26 +1,149 @@
 {{template "header.html"}}
 
-<div class="col-xl-9 col-lg-10">
-<div class="card">
-  <section class="file-wrapper text-center">
-      <!-- Example for a preview video -->
-      <!-- <div class="embed-responsive embed-responsive-16by9">
-              <iframe class="embed-responsive-item" src="?view" allowfullscreen></iframe>
-            </div> -->
-      <!-- Use this img if file is not image or video and cannot be previewed -->
-      <img src="/static/img/file.png" class="img-fluid img-file" alt="File icon">
-      
-      <!-- Example for a preview image -->
-      <!-- <img src="img/the-new-york-public-library-yEauzeZU6xo-unsplash.jpg" class="img-fluid img-preview" alt=""> -->
-  </section>
+<div class="container-fluid">
+  <div class="row">
 
-  <section class="file-info text-center">
-    <h2 class="file-heading">Download File</h2>
-    <p class="file-name">{{.Name}}</p>
-    <p class="file-size">{{.Size}}</p>
-    <a class="btn btn-primary btn-block btn-download" href="?download">Download</a>
-  </section>
+    <div class="col-lg-9 bg-grey">
+
+      <div class="row">
+        <div class="col text-center mb-4">
+          <a href="http://tardigrade.io/"><img src="/static/img/logo.svg" class="logo" alt="Logo"></a>
+          <p class="file-title-top text-center d-none d-md-inline-block">{{.Name}}</p>
+        </div>
+      </div>
+
+      <div class="row justify-content-center mt-5 mt-md-0">
+        <div class="col-sm-10 col-md-9 col-lg-12 col-xl-9">
+          <div class="card p-3 p-lg-5">
+            <div class="row">
+              <div class="col text-center mb-4 mt-3 mt-lg-0">
+                <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Name}}</span> on Tardigrade</h6>
+              </div>
+            </div>
+            <div class="row">
+              <div id="mapid" class="col-lg-8 text-center map">
+                <script>
+                  var mymap = L.map('mapid').setView([35, 10], 1.2);
+
+                  L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYm9zaGV2c2tpIiwiYSI6ImNrZnppcXk1bTA3amcydnFpMzhjajZjYTYifQ.Ub1wutfrbuZnLwBQu7DDbw', {
+                    maxZoom: 6,
+                    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+                            '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                    id: 'boshevski/ckg4162p90kie19nzjdzxhwb9',
+                    tileSize: 512,
+                    zoomOffset: -1,
+                    // this map option disables world wrapping. by default, it is false.
+                    continuousWorld: false,
+                    // this option disables loading tiles outside of the world bounds.
+                    noWrap: true
+                  }).addTo(mymap);
+
+                  var routes = {{.Locations}};
+
+                  circleOpts = {
+                    color: '#2582ff',
+                    fillColor: '#2582ff',
+                    radius: 6000,
+                    fillOpacity: 1,
+                  };
+
+                  for (var i = 0; i < routes.length; i++) {
+                    r = routes[i]
+
+                    L.circle([r.Latitude, r.Longitude], circleOpts).addTo(mymap);
+                  }
+                </script>
+              </div>
+              <div class="col-lg-4">
+                <p class="mt-4"><strong>Status: <span>Ready for download</span></strong></p>
+                <p class="mt-4"><strong>File Size:</strong> <span>{{.Size}}</span></p>
+                <p class="mt-4"><strong>File Pieces:</strong> <span>{{.Pieces}}</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-10 col-md-8 text-center py-5">
+          <h5 class="mb-3">You’re Downloading this File From All Over the World</h5>
+          <p>Tardigrade distributes pieces of this file on a global network, meaning it isn’t being downloaded from a data center, it’s being downloaded from nodes all over the world. The map above shows the location of this file’s pieces.</p>
+          <a href="http://tardigrade.io/" target="_blank" rel="noopener" class="btn btn-light btn-lg text-primary px-4 mt-2 mb-4">Learn More About Tardigrade</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-3">
+      <div class="row mb-5 mt-3">
+        <div class="col-2">
+          <a href="?download" class="btn btn-outline-secondary"><img src="/static/img/icon-download-blue.svg" alt="Download"></a>
+        </div>
+        <div class="col-10 text-right">
+          <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
+          <a href="https://tardigrade.io/signup" class="btn btn-outline-primary">Sign Up</a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="file">
+            <img src="/static/img/icon-file.svg" alt="File icon">
+            <h5 class="file-title-sidebar">{{.Name}}</h5>
+          </div>
+          <p class="mt-3">{{.Size}}</p>
+          <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
+          <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-4 border-2 btn-share">Share <img src="/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center border-0 p-5">
+      <div class="modal-header border-0">
+        <h5 class="modal-title mx-auto" id="shareModalLabel">Share {{.Name}}</h5>
+        <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button> -->
+      </div>
+      <div class="modal-body pt-0">
+        <p>Just copy and paste the link below to share this file.</p>
+        <input class="form-control form-control-lg mt-4 input-url" type="url" id="url" readonly>
+        <button type="button" name="copy" class="btn btn-light btn-copy">Copy</button>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-primary btn-block btn-lg" data-dismiss="modal" onclick="closeModal()">Done</button>
+      </div>
+    </div>
+  </div>
 </div>
+<div class="modal-backdrop fade show" id="backdrop" style="display: none;"></div>
+
+<script type="text/javascript">
+  function openModal() {
+    document.getElementById("backdrop").style.display = "block"
+    document.getElementById("shareModal").style.display = "block"
+    document.getElementById("shareModal").className += "show"
+  }
+
+  function closeModal() {
+      document.getElementById("backdrop").style.display = "none"
+      document.getElementById("shareModal").style.display = "none"
+      document.getElementById("shareModal").className += document.getElementById("shareModal").className.replace("show", "")
+  }
+
+  var modal = document.getElementById('shareModal');
+
+  window.onclick = function (event) {
+      if (event.target == modal) {
+          closeModal()
+      }
+  }
+</script>
 
 {{template "footer.html"}}

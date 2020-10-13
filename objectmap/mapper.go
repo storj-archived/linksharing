@@ -68,7 +68,11 @@ func ValidateIP(ipAddress string) (net.IP, error) {
 
 	parsed := net.ParseIP(ip)
 	if parsed == nil {
-		return nil, errs.New("invalid IP address: %s", ip)
+		tmpParsed, err := net.LookupHost(ip)
+		if err != nil {
+			return nil, errs.New("invalid IP address: %s", ip)
+		}
+		parsed = net.ParseIP(tmpParsed[0])
 	}
 	return parsed, nil
 }

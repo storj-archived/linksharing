@@ -7,12 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
-	"text/template"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
@@ -20,7 +20,9 @@ import (
 	"storj.io/common/memory"
 	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
+	"storj.io/linksharing/objectmap"
 	"storj.io/uplink"
+	"storj.io/uplink/private/object"
 )
 
 var (
@@ -37,11 +39,19 @@ type HandlerConfig struct {
 	Templates string
 }
 
+// Location represents geographical points
+// in the globe.
+type Location struct {
+	Latitude  float64
+	Longitude float64
+}
+
 // Handler implements the link sharing HTTP handler.
 type Handler struct {
 	log       *zap.Logger
 	urlBase   *url.URL
 	templates *template.Template
+	mapper    *objectmap.IPDB
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -60,10 +70,16 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
+	mapper, err := objectmap.NewIPDB("./static/maxMindDB.mmdb")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
 		log:       log,
 		urlBase:   urlBase,
 		templates: templates,
+		mapper:    mapper,
 	}, nil
 }
 
@@ -136,14 +152,51 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	_, download := r.URL.Query()["download"]
 	_, view := r.URL.Query()["view"]
 	if !download && !view {
+		ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, access, bucket, key)
+		if err != nil {
+			handler.handleUplinkErr(w, "get object IPs", err)
+			return err
+		}
+
+		var ipStrings []string
+		for index, _ := range ipBytes {
+			ip := string(ipBytes[index])
+			ipStrings = append(ipStrings, ip)
+		}
+
+		var ipInfos []objectmap.IPInfo
+		for _, address := range ipStrings {
+			info, err := handler.mapper.GetIPInfos(address)
+			if err != nil {
+				return err
+			}
+
+			ipInfos = append(ipInfos, *info)
+		}
+
+		var locations []Location
+		for _, info := range ipInfos {
+			location := Location{
+				Latitude:  info.Location.Latitude,
+				Longitude: info.Location.Longitude,
+			}
+
+			locations = append(locations, location)
+		}
+
 		var input struct {
 			Name string
 			Size string
+			Locations []Location
+			Pieces int64
 		}
-		input.Name = bucket + "/" + o.Key
+		input.Name = o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()
+		input.Locations = locations
+		input.Pieces = int64(len(locations))
 
-		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
+		err = handler.templates.ExecuteTemplate(w, "single-object.html", input)
+		return err
 	}
 
 	if download {
