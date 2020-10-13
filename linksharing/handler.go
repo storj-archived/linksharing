@@ -168,7 +168,8 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		for _, address := range ipStrings {
 			info, err := handler.mapper.GetIPInfos(address)
 			if err != nil {
-				return err
+				handler.log.Error("failed to get IP info", zap.Error(err))
+				continue
 			}
 
 			ipInfos = append(ipInfos, *info)
