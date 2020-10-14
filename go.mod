@@ -19,5 +19,5 @@ require (
 	golang.org/x/tools v0.0.0-20200428211428-0c9eba77bc32 // indirect
 	storj.io/common v0.0.0-20201006183456-4f16ac657da9
 	storj.io/private v0.0.0-20200925142346-4c879709882f
-	storj.io/uplink v1.3.1-0.20201012100353-e9c6323a208a
+	storj.io/uplink v1.3.1
 )
