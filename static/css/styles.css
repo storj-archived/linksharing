@@ -12,16 +12,15 @@ p, span, a {
   color: #000;
 }
 
-nav {
-  padding: 20px 0;
-  margin-bottom: 32px;
+.navbar {
+  padding: 8px 16px;;
   border-bottom: 1px solid #f2f3f4;
   background: #fff;
 }
-.nav-cta {
-  color: #2583ff !important;
-  font-weight: 500;
-  text-decoration: underline;
+
+.navbar-logo {
+  position: relative;
+  top: -3px;
 }
 
 .bg-grey {
