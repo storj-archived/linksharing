@@ -23,6 +23,8 @@ import (
 
 	"storj.io/common/pkcrypto"
 	"storj.io/common/testcontext"
+	"storj.io/linksharing/handler"
+	"storj.io/linksharing/objectmap"
 )
 
 var (
@@ -36,10 +38,15 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 )
 
 func TestServer(t *testing.T) {
-	address := "localhost:0"
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "OK")
-	})
+	address := "localhost:15001"
+	handlerConfig := handler.HandlerConfig{
+		URLBase:   address,
+		Templates: "../templates/*.html",
+	}
+	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
+	handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
+	require.NoError(t, err)
+
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
@@ -51,31 +58,41 @@ func TestServer(t *testing.T) {
 
 	testCases := []serverTestCase{
 		{
-			Name:    "missing address",
-			Handler: handler,
-			NewErr:  "server address is required",
+			Mapper:        mapper,
+			HandlerConfig: handlerConfig,
+			Name:          "missing address",
+			Handler:       handler,
+			NewErr:        "server address is required",
 		},
 		{
-			Name:    "bad address",
-			Address: "this is no good",
-			Handler: handler,
-			NewErr:  "unable to listen on this is no good: listen tcp: address this is no good: missing port in address",
+			Mapper:        mapper,
+			HandlerConfig: handlerConfig,
+			Name:          "bad address",
+			Address:       "this is no good",
+			Handler:       handler,
+			NewErr:        "unable to listen on this is no good: listen tcp: address this is no good: missing port in address",
 		},
 		{
-			Name:    "missing handler",
-			Address: address,
-			NewErr:  "server handler is required",
+			Mapper:        mapper,
+			HandlerConfig: handlerConfig,
+			Name:          "missing handler",
+			Address:       address,
+			NewErr:        "server handler is required",
 		},
 		{
-			Name:    "success via HTTP",
-			Address: address,
-			Handler: handler,
+			Mapper:        mapper,
+			HandlerConfig: handlerConfig,
+			Name:          "success via HTTP",
+			Address:       address,
+			Handler:       handler,
 		},
 		{
-			Name:      "success via HTTPS",
-			Address:   address,
-			Handler:   handler,
-			TLSConfig: tlsConfig,
+			Mapper:        mapper,
+			HandlerConfig: handlerConfig,
+			Name:          "success via HTTPS",
+			Address:       address,
+			Handler:       handler,
+			TLSConfig:     tlsConfig,
 		},
 	}
 
@@ -102,18 +119,24 @@ func TestServer(t *testing.T) {
 }
 
 type serverTestCase struct {
-	Name      string
-	Address   string
-	Handler   http.Handler
-	TLSConfig *tls.Config
-	NewErr    string
+	Mapper        *objectmap.IPDB
+	HandlerConfig handler.HandlerConfig
+	Name          string
+	Address       string
+	Handler       *handler.Handler
+	TLSConfig     *tls.Config
+	NewErr        string
 }
 
 func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
-	s, err := New(zaptest.NewLogger(tb), Config{
+	listener, err := net.Listen("tcp", testCase.Address)
+	if err != nil {
+		return nil, false
+	}
+
+	s, err := New(zaptest.NewLogger(tb), listener, testCase.Handler, Config{
 		Name:      "test",
 		Address:   testCase.Address,
-		Handler:   testCase.Handler,
 		TLSConfig: testCase.TLSConfig,
 	})
 	if testCase.NewErr != "" {

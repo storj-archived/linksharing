@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Storj Labs, Inc.
+// Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
 package handler
@@ -47,6 +47,8 @@ type Location struct {
 }
 
 // Handler implements the link sharing HTTP handler.
+//
+// architecture: Service
 type Handler struct {
 	log       *zap.Logger
 	urlBase   *url.URL
@@ -76,6 +78,8 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config HandlerConfig) (
 		mapper:    mapper,
 	}, nil
 }
+
+// TODO: i could assume that it is a business logic layer, so we should remove transport and server from here.
 
 // ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

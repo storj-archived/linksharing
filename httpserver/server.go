@@ -47,6 +47,8 @@ type Config struct {
 }
 
 // Server is the HTTP server.
+//
+// architecture: Endpoint
 type Server struct {
 	log     *zap.Logger
 	handler *handler.Handler

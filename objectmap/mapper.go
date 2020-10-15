@@ -33,6 +33,8 @@ type Reader interface {
 }
 
 // IPDB holds the database file path and its reader.
+//
+// architecture: Database
 type IPDB struct {
 	reader Reader
 }
