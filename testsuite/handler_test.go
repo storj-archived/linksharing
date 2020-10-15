@@ -14,9 +14,9 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
-	"storj.io/storj/private/testplanet"
-
 	"storj.io/linksharing/linksharing"
+	"storj.io/linksharing/objectmap"
+	"storj.io/storj/private/testplanet"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -77,11 +77,13 @@ func TestNewHandler(t *testing.T) {
 		},
 	}
 
+	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
+
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testCase.config.Templates = "./../templates/*.html"
-			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), testCase.config)
+			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
 				return
@@ -216,10 +218,12 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		},
 	}
 
+	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
+
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), linksharing.HandlerConfig{
+			handler, err := linksharing.NewHandler(zaptest.NewLogger(t), mapper, linksharing.HandlerConfig{
 				URLBase:   "http://localhost",
 				Templates: "./../templates/*.html",
 			})

@@ -6,10 +6,12 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/oschwald/maxminddb-golang"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"storj.io/linksharing/objectmap"
 
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
@@ -83,7 +85,14 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL, GeoLocationDB: runCfg.GeoLocationDB,})
+	reader, err := maxminddb.Open(runCfg.GeoLocationDB)
+	if err != nil {
+		return err
+	}
+
+	mapper := objectmap.NewIPDB(reader)
+
+	handler, err := linksharing.NewHandler(log, mapper, linksharing.HandlerConfig{URLBase: runCfg.PublicURL})
 	if err != nil {
 		return err
 	}

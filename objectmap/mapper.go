@@ -6,7 +6,6 @@ package objectmap
 import (
 	"net"
 
-	"github.com/oschwald/maxminddb-golang"
 	"github.com/zeebo/errs"
 )
 
@@ -39,15 +38,10 @@ type IPDB struct {
 }
 
 // NewIPDB creates a new IPMapper instance.
-func NewIPDB(dbPath string) (*IPDB, error) {
-	reader, err := maxminddb.Open(dbPath)
-	if err != nil {
-		return nil, Error.Wrap(err)
-	}
-
+func NewIPDB(reader Reader) *IPDB {
 	return &IPDB{
 		reader: reader,
-	}, nil
+	}
 }
 
 // Close closes the IPMapper reader.
@@ -60,7 +54,6 @@ func (mapper *IPDB) Close() (err error) {
 
 // ValidateIP validate and remove port from IP address.
 func ValidateIP(ipAddress string) (net.IP, error) {
-
 	ip, _, err := net.SplitHostPort(ipAddress)
 	if err != nil {
 		ip = ipAddress // assume it had no port
@@ -79,8 +72,8 @@ func ValidateIP(ipAddress string) (net.IP, error) {
 
 // GetIPInfos returns the geolocation information from an IP address.
 func (mapper *IPDB) GetIPInfos(ipAddress string) (_ *IPInfo, err error) {
-
 	var record IPInfo
+
 	parsed, err := ValidateIP(ipAddress)
 	if err != nil {
 		return nil, Error.Wrap(err)

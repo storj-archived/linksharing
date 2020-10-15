@@ -37,9 +37,6 @@ type HandlerConfig struct {
 
 	// Templates location with html templates.
 	Templates string
-
-	// Maxmind geolocation database path.
-	GeoLocationDB string
 }
 
 // Location represents geographical points
@@ -58,8 +55,7 @@ type Handler struct {
 }
 
 // NewHandler creates a new link sharing HTTP handler.
-func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
-
+func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config HandlerConfig) (*Handler, error) {
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
 		return nil, err
@@ -69,11 +65,6 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		config.Templates = "./templates/*.html"
 	}
 	templates, err := template.ParseGlob(config.Templates)
-	if err != nil {
-		return nil, err
-	}
-
-	mapper, err := objectmap.NewIPDB(config.GeoLocationDB)
 	if err != nil {
 		return nil, err
 	}
@@ -178,10 +169,10 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 
 		var input struct {
-			Name string
-			Size string
+			Name      string
+			Size      string
 			Locations []Location
-			Pieces int64
+			Pieces    int64
 		}
 		input.Name = o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()

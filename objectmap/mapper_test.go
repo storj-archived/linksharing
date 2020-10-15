@@ -4,46 +4,12 @@
 package objectmap
 
 import (
-	"errors"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-type MockReader struct{}
-
-func (mr *MockReader) Lookup(ip net.IP, result interface{}) error {
-
-	// Valid geolocation case
-	if ip.Equal(net.IPv4(172, 146, 10, 1)) {
-		result.(*IPInfo).Location = mockIPInfo(-19.456, 20.123).Location
-		return nil
-	}
-	// Location not found
-	if ip.Equal(net.IPv4(1, 1, 1, 1)) {
-		return errors.New("Not found")
-	}
-	return nil
-}
-
-func (mr *MockReader) Close() error {
-	return nil
-}
-
-func mockIPInfo(latitude, longitude float64) *IPInfo {
-	return &IPInfo{
-		Location: struct {
-			Latitude  float64 `maxminddb:"latitude"`
-			Longitude float64 `maxminddb:"longitude"`
-		}{
-			Latitude:  latitude,
-			Longitude: longitude,
-		},
-	}
-}
 func TestIPDB_GetIPInfos(t *testing.T) {
-
 	mockReader := &MockReader{}
 
 	tests := []struct {
