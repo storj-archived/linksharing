@@ -29,7 +29,7 @@ var (
 	mon = monkit.Package()
 )
 
-// HandlerConfig specifies the handler configuration.
+// Config specifies the handler configuration.
 type Config struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
