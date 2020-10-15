@@ -277,9 +277,18 @@ func parseRequestPath(p string) (rawRequest bool, _ *uplink.Access, serializedAc
 
 	// Split the request path
 	segments := strings.SplitN(p, "/", 4)
-	if len(segments) == 4 && segments[0] == "raw" {
-		rawRequest = true
-		segments = segments[1:]
+	if len(segments) == 4 {
+		if segments[0] == "raw" {
+			rawRequest = true
+			segments = segments[1:]
+		} else {
+			// if its not a raw request, we need to concat the last two entries as those contain paths in the bucket
+			// and shrink the array again
+			rawRequest = false
+			segments[2] = segments[2] + "/" + segments[3]
+			segments = segments[:len(segments)-1]
+		}
+
 	}
 	if len(segments) == 1 {
 		if segments[0] == "" {
