@@ -6,13 +6,12 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/oschwald/maxminddb-golang"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"storj.io/linksharing/objectmap"
 
+	"github.com/oschwald/maxminddb-golang"
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
@@ -21,6 +20,7 @@ import (
 	"storj.io/common/fpath"
 	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/linksharing"
+	"storj.io/linksharing/objectmap"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
