@@ -43,6 +43,9 @@ type Config struct {
 	// 10 seconds if unset. If set to a negative value, the server will be
 	// closed immediately.
 	ShutdownTimeout time.Duration
+
+	// Maxmind geolocation database path.
+	GeoLocationDB string
 }
 
 // Server is the HTTP server.

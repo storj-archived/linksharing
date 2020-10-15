@@ -30,6 +30,7 @@ type LinkSharing struct {
 	CertFile      string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
 	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
 	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
 }
 
 var (
@@ -82,7 +83,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL})
+	handler, err := linksharing.NewHandler(log, linksharing.HandlerConfig{URLBase: runCfg.PublicURL, GeoLocationDB: runCfg.GeoLocationDB,})
 	if err != nil {
 		return err
 	}

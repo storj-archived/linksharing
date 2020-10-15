@@ -37,6 +37,9 @@ type HandlerConfig struct {
 
 	// Templates location with html templates.
 	Templates string
+
+	// Maxmind geolocation database path.
+	GeoLocationDB string
 }
 
 // Location represents geographical points
@@ -70,7 +73,7 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		return nil, err
 	}
 
-	mapper, err := objectmap.NewIPDB("./static/maxMindDB.mmdb")
+	mapper, err := objectmap.NewIPDB(config.GeoLocationDB)
 	if err != nil {
 		return nil, err
 	}
@@ -158,25 +161,14 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 			return err
 		}
 
-		var ipStrings []string
-		for index, _ := range ipBytes {
-			ip := string(ipBytes[index])
-			ipStrings = append(ipStrings, ip)
-		}
-
-		var ipInfos []objectmap.IPInfo
-		for _, address := range ipStrings {
-			info, err := handler.mapper.GetIPInfos(address)
+		var locations []Location
+		for _, ip := range ipBytes {
+			info, err := handler.mapper.GetIPInfos(string(ip))
 			if err != nil {
 				handler.log.Error("failed to get IP info", zap.Error(err))
 				continue
 			}
 
-			ipInfos = append(ipInfos, *info)
-		}
-
-		var locations []Location
-		for _, info := range ipInfos {
 			location := Location{
 				Latitude:  info.Location.Latitude,
 				Longitude: info.Location.Longitude,
@@ -196,8 +188,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		input.Locations = locations
 		input.Pieces = int64(len(locations))
 
-		err = handler.templates.ExecuteTemplate(w, "single-object.html", input)
-		return err
+		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
 	}
 
 	if download {
