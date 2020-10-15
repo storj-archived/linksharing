@@ -24,7 +24,7 @@ func (mr *MockReader) Lookup(ip net.IP, result interface{}) error {
 	}
 	// Location not found
 	if ip.Equal(net.IPv4(1, 1, 1, 1)) {
-		return errors.New("Not found")
+		return errors.New("not found")
 	}
 	return nil
 }
