@@ -40,7 +40,7 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	handlerConfig := handler.HandlerConfig{
-		URLBase:   address,
+		URLBase:   "https://localhost:15001",
 		Templates: "../templates/*.html",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
