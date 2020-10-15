@@ -39,7 +39,7 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
-	handlerConfig := handler.HandlerConfig{
+	handlerConfig := handler.Config{
 		URLBase:   "https://localhost:15001",
 		Templates: "../templates/*.html",
 	}
@@ -120,7 +120,7 @@ func TestServer(t *testing.T) {
 
 type serverTestCase struct {
 	Mapper        *objectmap.IPDB
-	HandlerConfig handler.HandlerConfig
+	HandlerConfig handler.Config
 	Name          string
 	Address       string
 	Handler       *handler.Handler

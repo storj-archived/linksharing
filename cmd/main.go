@@ -104,7 +104,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			ShutdownTimeout: -1,
 			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
-		Handler: handler.HandlerConfig{
+		Handler: handler.Config{
 			URLBase: runCfg.Address,
 		},
 	})

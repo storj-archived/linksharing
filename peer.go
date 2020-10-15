@@ -20,7 +20,7 @@ import (
 // Config contains configurable values for sno registration Peer.
 type Config struct {
 	Server  httpserver.Config
-	Handler handler.HandlerConfig
+	Handler handler.Config
 }
 
 // Peer is the representation of a Linksharing service itself.

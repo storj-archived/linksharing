@@ -30,7 +30,7 @@ var (
 )
 
 // HandlerConfig specifies the handler configuration.
-type HandlerConfig struct {
+type Config struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
@@ -57,7 +57,7 @@ type Handler struct {
 }
 
 // NewHandler creates a new link sharing HTTP handler.
-func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config HandlerConfig) (*Handler, error) {
+func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handler, error) {
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
 		return nil, err
