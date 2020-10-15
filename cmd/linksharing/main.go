@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/oschwald/maxminddb-golang"
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
@@ -21,7 +20,6 @@ import (
 	"storj.io/linksharing"
 	"storj.io/linksharing/handler"
 	"storj.io/linksharing/httpserver"
-	"storj.io/linksharing/objectmap"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
@@ -60,7 +58,7 @@ var (
 )
 
 func init() {
-	defaultConfDir := fpath.ApplicationDir("storj", "handler")
+	defaultConfDir := fpath.ApplicationDir("storj", "linksharing")
 	cfgstruct.SetupFlag(zap.L(), rootCmd, &confDir, "config-dir", defaultConfDir, "main directory for link sharing configuration")
 	defaults := cfgstruct.DefaultsFlag(rootCmd)
 	rootCmd.AddCommand(runCmd)
@@ -86,17 +84,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	reader, err := maxminddb.Open(runCfg.GeoLocationDB)
-	if err != nil {
-		return err
-	}
-	mapper := objectmap.NewIPDB(reader)
-	defer func() {
-		// mapper.Close() closes reader.
-		err = errs.Combine(err, mapper.Close())
-	}()
-
-	peer, err := linksharing.New(log, mapper, linksharing.Config{
+	peer, err := linksharing.New(log, linksharing.Config{
 		Server: httpserver.Config{
 			Name:            "Link Sharing",
 			Address:         runCfg.Address,
@@ -105,7 +93,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
 		Handler: handler.Config{
-			URLBase: runCfg.Address,
+			URLBase: runCfg.PublicURL,
 		},
 	})
 	if err != nil {

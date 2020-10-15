@@ -104,7 +104,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		return err
 	}
 
-	access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
+	rawRequest, access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path)
 	if err != nil {
 		err = fmt.Errorf("invalid request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -149,7 +149,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 
 	_, download := r.URL.Query()["download"]
 	_, view := r.URL.Query()["view"]
-	if !download && !view {
+	if !download && !view && !rawRequest {
 		ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, access, bucket, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "get object IPs", err)
@@ -188,8 +188,8 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 
 	if download {
 		segments := strings.Split(key, "/")
-		object := segments[len(segments)-1]
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+object+"\"")
+		obj := segments[len(segments)-1]
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+obj+"\"")
 	}
 	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
 	return nil
@@ -271,17 +271,21 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	}
 }
 
-func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key string, err error) {
+func parseRequestPath(p string) (rawRequest bool, _ *uplink.Access, serializedAccess, bucket, key string, err error) {
 	// Drop the leading slash, if necessary
 	p = strings.TrimPrefix(p, "/")
 
 	// Split the request path
-	segments := strings.SplitN(p, "/", 3)
+	segments := strings.SplitN(p, "/", 4)
+	if len(segments) == 4 && segments[0] == "raw" {
+		rawRequest = true
+		segments = segments[1:]
+	}
 	if len(segments) == 1 {
 		if segments[0] == "" {
-			return nil, "", "", "", errors.New("missing access")
+			return rawRequest, nil, "", "", "", errors.New("missing access")
 		}
-		return nil, "", "", "", errors.New("missing bucket")
+		return rawRequest, nil, "", "", "", errors.New("missing bucket")
 	}
 
 	serializedAccess = segments[0]
@@ -293,9 +297,9 @@ func parseRequestPath(p string) (_ *uplink.Access, serializedAccess, bucket, key
 
 	access, err := uplink.ParseAccess(serializedAccess)
 	if err != nil {
-		return nil, "", "", "", err
+		return rawRequest, nil, "", "", "", err
 	}
-	return access, serializedAccess, bucket, key, nil
+	return rawRequest, access, serializedAccess, bucket, key, nil
 }
 
 type objectRanger struct {
