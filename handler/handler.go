@@ -1,18 +1,18 @@
-// Copyright (C) 2019 Storj Labs, Inc.
+// Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package linksharing
+package handler
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
-	"text/template"
 
 	"github.com/spacemonkeygo/monkit/v3"
 	"go.uber.org/zap"
@@ -20,15 +20,17 @@ import (
 	"storj.io/common/memory"
 	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
+	"storj.io/linksharing/objectmap"
 	"storj.io/uplink"
+	"storj.io/uplink/private/object"
 )
 
 var (
 	mon = monkit.Package()
 )
 
-// HandlerConfig specifies the handler configuration.
-type HandlerConfig struct {
+// Config specifies the handler configuration.
+type Config struct {
 	// URLBase is the base URL of the link sharing handler. It is used
 	// to construct URLs returned to clients. It should be a fully formed URL.
 	URLBase string
@@ -37,16 +39,25 @@ type HandlerConfig struct {
 	Templates string
 }
 
+// Location represents geographical points
+// in the globe.
+type Location struct {
+	Latitude  float64
+	Longitude float64
+}
+
 // Handler implements the link sharing HTTP handler.
+//
+// architecture: Service
 type Handler struct {
 	log       *zap.Logger
 	urlBase   *url.URL
 	templates *template.Template
+	mapper    *objectmap.IPDB
 }
 
 // NewHandler creates a new link sharing HTTP handler.
-func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
-
+func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handler, error) {
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
 		return nil, err
@@ -64,8 +75,11 @@ func NewHandler(log *zap.Logger, config HandlerConfig) (*Handler, error) {
 		log:       log,
 		urlBase:   urlBase,
 		templates: templates,
+		mapper:    mapper,
 	}, nil
 }
+
+// TODO: i could assume that it is a business logic layer, so we should remove transport and server from here.
 
 // ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -136,12 +150,38 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	_, download := r.URL.Query()["download"]
 	_, view := r.URL.Query()["view"]
 	if !download && !view {
-		var input struct {
-			Name string
-			Size string
+		ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, access, bucket, key)
+		if err != nil {
+			handler.handleUplinkErr(w, "get object IPs", err)
+			return err
 		}
-		input.Name = bucket + "/" + o.Key
+
+		var locations []Location
+		for _, ip := range ipBytes {
+			info, err := handler.mapper.GetIPInfos(string(ip))
+			if err != nil {
+				handler.log.Error("failed to get IP info", zap.Error(err))
+				continue
+			}
+
+			location := Location{
+				Latitude:  info.Location.Latitude,
+				Longitude: info.Location.Longitude,
+			}
+
+			locations = append(locations, location)
+		}
+
+		var input struct {
+			Name      string
+			Size      string
+			Locations []Location
+			Pieces    int64
+		}
+		input.Name = o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()
+		input.Locations = locations
+		input.Pieces = int64(len(locations))
 
 		return handler.templates.ExecuteTemplate(w, "single-object.html", input)
 	}
