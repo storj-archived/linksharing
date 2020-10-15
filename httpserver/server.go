@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
+	"storj.io/linksharing/handler"
 )
 
 const (
@@ -32,9 +33,6 @@ type Config struct {
 	// Address is the address to bind the server to. It must be set.
 	Address string
 
-	// Handler is the HTTP handler to be served. It must be set.
-	Handler http.Handler
-
 	// TLSConfig is the TLS configuration for the server. It is optional.
 	TLSConfig *tls.Config
 
@@ -50,31 +48,28 @@ type Config struct {
 
 // Server is the HTTP server.
 type Server struct {
-	log             *zap.Logger
-	name            string
+	log     *zap.Logger
+	handler *handler.Handler
+	name    string
+
 	listener        net.Listener
 	server          *http.Server
 	shutdownTimeout time.Duration
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, config Config) (*Server, error) {
+func New(log *zap.Logger, listener net.Listener, handler *handler.Handler, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")
-	case config.Handler == nil:
+	case handler == nil:
 		return nil, errs.New("server handler is required")
 	}
 
-	listener, err := net.Listen("tcp", config.Address)
-	if err != nil {
-		return nil, errs.New("unable to listen on %s: %v", config.Address, err)
-	}
-
 	mux := http.NewServeMux()
-	// TODO add static folder location to linksharing configuration
+	// TODO add static folder location to handler configuration
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	mux.Handle("/", config.Handler)
+	mux.Handle("/", handler)
 
 	server := &http.Server{
 		Handler:   mux,
@@ -96,6 +91,7 @@ func New(log *zap.Logger, config Config) (*Server, error) {
 		listener:        listener,
 		server:          server,
 		shutdownTimeout: config.ShutdownTimeout,
+		handler:         handler,
 	}, nil
 }
 
@@ -123,12 +119,18 @@ func (server *Server) Run(ctx context.Context) (err error) {
 		server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
 		return err
 	})
+
 	return group.Wait()
 }
 
 // Addr returns the public address.
 func (server *Server) Addr() string {
 	return server.listener.Addr().String()
+}
+
+// Close closes server and underlying listener.
+func (server *Server) Close() error {
+	return errs.Combine(server.server.Close(), server.listener.Close())
 }
 
 func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {
