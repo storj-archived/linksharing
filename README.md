@@ -20,14 +20,17 @@ $ linksharing setup --defaults dev
 ### Production
 
 To configure the link sharing service for production, run the `setup` command
-using the `release` defaults. You must also provide the public URL for
-the sharing service, which is used to construct URLs returned to
+using the `release` defaults. An required argument is the location of the geo-location database.
+You must also provide the public URL for the sharing service, which is used to construct URLs returned to
 clients. Since there is currently no server affinity for requests, the URL
 can point to a pool of servers:
 
 ```
-$ linksharing setup --defaults release --public-url <PUBLIC URL>
+$ linksharing setup --defaults release --geo-location-db <PATH TO FILE> --public-url <PUBLIC URL> 
 ```
+
+**NOTE**: Please follow this link for instructions how to install/download the geo-location database:
+https://dev.maxmind.com/geoip/geoipupdate/
 
 Default release configuration has the link sharing service hosted on `:8443`
 serving HTTPS using a server certificate (`server.crt.pem`) and
@@ -55,3 +58,6 @@ After configuration is complete, running the link sharing is as simple as:
 ```
 $ linksharing run
 ```
+
+
+[Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/

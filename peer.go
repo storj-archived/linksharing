@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 
+	"github.com/oschwald/maxminddb-golang"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -34,13 +35,18 @@ type Peer struct {
 }
 
 // New is a constructor for Linksharing Peer.
-func New(log *zap.Logger, mapper *objectmap.IPDB, config Config) (_ *Peer, err error) {
+func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 	peer := &Peer{
-		Log:    log,
-		Mapper: mapper,
+		Log: log,
 	}
 
-	handler, err := handler.NewHandler(log, mapper, config.Handler)
+	reader, err := maxminddb.Open(config.Server.GeoLocationDB)
+	if err != nil {
+		return nil, err
+	}
+	peer.Mapper = objectmap.NewIPDB(reader)
+
+	handle, err := handler.NewHandler(log, peer.Mapper, config.Handler)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +56,7 @@ func New(log *zap.Logger, mapper *objectmap.IPDB, config Config) (_ *Peer, err e
 		return nil, errs.New("unable to listen on %s: %v", config.Server.Address, err)
 	}
 
-	peer.Server, err = httpserver.New(log, peer.Listener, handler, config.Server)
+	peer.Server, err = httpserver.New(log, peer.Listener, handle, config.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +86,10 @@ func (peer *Peer) Close() error {
 
 	if peer.Listener != nil {
 		errlist.Add(peer.Listener.Close())
+	}
+
+	if peer.Mapper != nil {
+		errlist.Add(peer.Mapper.Close())
 	}
 
 	return errlist.Err()
