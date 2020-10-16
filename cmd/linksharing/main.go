@@ -154,7 +154,7 @@ func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(parsedURL.Host),
-		Cache:      autocert.DirCache(".certs"),
+		Cache:      autocert.DirCache(filepath.Join(confDir, ".certs")),
 	}
 	tlsConfig = &tls.Config{
 		GetCertificate: certManager.GetCertificate,
