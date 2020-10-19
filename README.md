@@ -62,15 +62,30 @@ You can use your own domain for your linksharing and static site hosting with th
 * We don't recommend utilizing this service for high traffic sites - due to security and cost-efficiency concerns - until we enable access to key shortening and page 
 caching.
 1. Share your READONLY file or directory via `uplink share --readonly --dns sj://<your path>`. 
-The `--dns` flag will print out the dns information that you will need.
+The `--dns` flag will print out the info needed to create your dns records.
 
-2. Create your CNAME with our linksharing common URL (https://link.tardigradeshare.io).
+2. Create your CNAME with our linksharing common URL (`link.tardigradeshare.io.`).
+   
+    <img src="images/cname.png" width="50%">
 
 3. Create 3 TXT records with the following info. You will need to add the entire string (including the prefix) to your records.
-    a. `storj_grant-1`
-    b. `storj_grant-2`
-    c. `storj_root`
-
+   
+    a. `storj_grant-1` is the first half of your access grant.
+   
+    <img src="images/grant1.png" width="50%">
+    
+    b. `storj_grant-2` is the second half of your access grant. The two parts don't need to be exactly 1/2 of the entire access grant.
+     We require 2 strings because of txt record length restrictions.
+    
+    <img src="images/grant2.png" width="50%">
+    
+    c. `storj_root` is the path of the shared object. It may be the path to a bucket, a directory, or an individual object.
+   
+    <img src="images/bucket.png" width="30%">
+    <img src="images/dir.png" width="30%">
+    <img src="images/obj.png" width="30%">
+    
+    
 4. That's it! You should be all set to share your files or directories with your custom domain.
 
 Examples:

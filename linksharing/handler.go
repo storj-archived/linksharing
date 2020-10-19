@@ -45,7 +45,7 @@ type HandlerConfig struct {
 }
 
 type txtRecord struct {
-	access    string
+	access    *uplink.Access
 	root      string
 	timestamp time.Time
 }
@@ -339,18 +339,17 @@ func makeLocation(base *url.URL, reqPath string) string {
 
 // handleHostingService deals with linksharing via custom URLs.
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	host := strings.SplitN(r.Host, ":", 2) // This handles the case where the host contains a port number.
-	serializedAccess, root, err := handler.getRootAndAccess(host[0])
-
+	host, _, err := net.SplitHostPort(r.Host)
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
 	}
 
-	access, err := uplink.ParseAccess(serializedAccess)
+	access, root, err := handler.getRootAndAccess(host)
 	if err != nil {
-		handler.handleUplinkErr(w, "parse access", err)
+		handler.log.Error("unable to handle request", zap.Error(err))
+		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
 	}
 
@@ -368,41 +367,39 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	// e.g. http://mydomain.com/folder2/index.html with root="bucket1/folder1"
 	rootPath := strings.SplitN(root, "/", 2) // e.g. rootPath=[bucket1, folder1]
 	bucket := rootPath[0]
-	path := strings.TrimPrefix(r.URL.Path, "/") // e.g. path = "folder2/index.html
-	path = strings.TrimSuffix(path, "/")
+	pt := strings.TrimPrefix(r.URL.Path, "/") // e.g. path = "folder2/index.html
 	if len(rootPath) == 2 {
-		pathPrefix := strings.TrimPrefix(rootPath[1], "/") // e.g. pathPrefix = "folder1"
-		pathPrefix = strings.TrimSuffix(pathPrefix, "/")
-		path = pathPrefix + "/" + path // e.g. path="folder1/folder2/index.html"
+		pathPrefix := rootPath[1]  // e.g. pathPrefix = "folder1"
+		pt = pathPrefix + "/" + pt // e.g. path="folder1/folder2/index.html"
 	}
 
-	if path == "" {
-		path = "index.html"
+	if pt == "" {
+		pt = "index.html"
 	}
 
-	o, err := project.StatObject(ctx, bucket, path)
+	o, err := project.StatObject(ctx, bucket, pt)
 	if err != nil {
 		handler.handleUplinkErr(w, "stat object", err)
 		return err
 	}
 
-	httpranger.ServeContent(ctx, w, r, path, o.System.Created, newObjectRanger(project, o, bucket))
+	httpranger.ServeContent(ctx, w, r, pt, o.System.Created, newObjectRanger(project, o, bucket))
 	return nil
 }
 
 // getRootAndAccess fetches the root and access grant from the cache or dns server when applicable.
-func (handler *Handler) getRootAndAccess(hostname string) (serializedAccess, root string, err error) {
+func (handler *Handler) getRootAndAccess(hostname string) (access *uplink.Access, root string, err error) {
 	record, exists := handler.checkCache(hostname)
 	if exists {
 		return record.access, record.root, nil
 	}
-	serializedAccess, root, err = getRemoteRecord(hostname)
+	access, root, err = getRemoteRecord(hostname)
 	if err != nil {
-		return serializedAccess, root, err
+		return access, root, err
 	}
-	handler.updateCache(hostname, serializedAccess, root)
+	handler.updateCache(hostname, root, access)
 
-	return serializedAccess, root, err
+	return access, root, err
 }
 
 // checkCache checks the txt record cache to see if we have a valid access grant and root path.
@@ -424,7 +421,7 @@ func recordIsExpired(record txtRecord, ttl time.Duration) bool {
 }
 
 // getRemoteRecord does an txt record lookup for the hostname on the dns server.
-func getRemoteRecord(hostname string) (access, root string, err error){
+func getRemoteRecord(hostname string) (access *uplink.Access, root string, err error) {
 	records, err := net.LookupTXT(hostname)
 	if err != nil {
 		return access, root, err
@@ -435,7 +432,7 @@ func getRemoteRecord(hostname string) (access, root string, err error){
 // parseRecords transforms the data from the hostname's external TXT records.
 // For example, a hostname may have the following TXT records: "storj_grant-1:abcd", "storj_grant-2:efgh", "storj_root:mybucket/folder".
 // parseRecords then will return serializedAccess="abcdefgh" and root="mybucket/folder".
-func parseRecords(records []string) (serializedAccess, root string, err error) {
+func parseRecords(records []string) (access *uplink.Access, root string, err error) {
 	grants := map[int]string{}
 	for _, record := range records {
 		r := strings.SplitN(record, ":", 2)
@@ -443,7 +440,7 @@ func parseRecords(records []string) (serializedAccess, root string, err error) {
 			section := strings.Split(r[0], "-")
 			key, err := strconv.Atoi(section[1])
 			if err != nil {
-				return serializedAccess, root, err
+				return access, root, err
 			}
 			grants[key] = r[1]
 		} else if r[0] == "storj_root" {
@@ -452,20 +449,22 @@ func parseRecords(records []string) (serializedAccess, root string, err error) {
 	}
 
 	if root == "" {
-		return serializedAccess, root, errors.New("missing root path in txt record")
+		return access, root, errors.New("missing root path in txt record")
 	}
 
+	var serializedAccess string
 	for i := 1; i <= len(grants); i++ {
 		if grants[i] == "" {
-			return serializedAccess, root, errors.New("missing grants")
+			return access, root, errors.New("missing grants")
 		}
 		serializedAccess += grants[i]
 	}
-	return serializedAccess, root, nil
+	access, err = uplink.ParseAccess(serializedAccess)
+	return access, root, err
 }
 
 // updateCache updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
-func (handler *Handler) updateCache(hostname, access, root string) {
+func (handler *Handler) updateCache(hostname, root string, access *uplink.Access) {
 	handler.txtRecords.mu.Lock()
 	defer handler.txtRecords.mu.Unlock()
 
