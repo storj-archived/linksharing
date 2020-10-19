@@ -70,12 +70,12 @@ The `--dns` flag will print out the info needed to create your dns records.
 
 3. Create 3 TXT records with the following info. You will need to add the entire string (including the prefix) to your records.
    
-    a. `storj_grant-1` is the first half of your access grant.
+    a. `storj_grant-1` is the first part of your access grant.
    
     <img src="images/grant1.png" width="50%">
     
-    b. `storj_grant-2` is the second half of your access grant. The two parts don't need to be exactly 1/2 of the entire access grant.
-     We require 2 strings because of txt record length restrictions.
+    b. `storj_grant-2` is the second part of your access grant. The two parts don't need to be exactly 1/2 of the entire access grant.
+     We require at least 2 strings because of txt record length restrictions. If your access grant is more than 450 characters long, you might need to split it into even more sections.
     
     <img src="images/grant2.png" width="50%">
     
@@ -87,9 +87,3 @@ The `--dns` flag will print out the info needed to create your dns records.
     
     
 4. That's it! You should be all set to share your files or directories with your custom domain.
-
-Examples:
-
-"bucket/image.png"
-"bucket" -> index.html
-"bucket/folder" -> myfiles
