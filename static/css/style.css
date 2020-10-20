@@ -100,7 +100,7 @@ p, span, a {
 }
 .btn-copy {
   position: absolute;
-  top: 60px;
+  bottom: 30px;
   right: 28px;
   color: #0068DC;
 }
@@ -163,6 +163,10 @@ p, span, a {
 }
 
 /* Share modal */
+
+.modal-title {
+  word-break: break-word;
+}
 
 .input-url {
   background: #0C2546 !important;
