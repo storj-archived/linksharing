@@ -61,8 +61,9 @@ $ linksharing run
 
 ## Custom URL configuration and static site hosting*
 
-You can use your own domain for your linksharing and static site hosting with the following setup. 
-* We don't recommend utilizing this service for high traffic sites - due to security and cost-efficiency concerns - until we enable access to key shortening and page 
+You can use your own domain for your linksharing and static site hosting with the following setup.
+ 
+** We don't recommend utilizing this service for high traffic sites - due to security and cost-efficiency concerns - until we enable access to key shortening and page 
 caching.
 1. Share your READONLY file or directory via `uplink share --readonly --dns sj://<your path>`. 
 The `--dns` flag will print out the info needed to create your dns records.
