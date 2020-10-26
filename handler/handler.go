@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Storj Labs, Inc.
+// Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
 package handler
@@ -7,7 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"html/template"
+  "io"
 	"net"
 	"net/http"
 	"net/url"
@@ -128,6 +129,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return err
 	}
+
 	return handler.handleTraditional(ctx, w, r, locationOnly)
 }
 
@@ -200,6 +202,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 
 			locations = append(locations, location)
 		}
+    
 		var input struct {
 			Name      string
 			Size      string

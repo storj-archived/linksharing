@@ -20,8 +20,8 @@ $ linksharing setup --defaults dev
 ### Production
 
 To configure the link sharing service for production, run the `setup` command
-using the `release` defaults. You must also provide the public URL for
-the sharing service, which is used to construct URLs returned to
+using the `release` defaults. An required argument is the location of the geo-location database.
+You must also provide the public URL for the sharing service, which is used to construct URLs returned to
 clients. Since there is currently no server affinity for requests, the URL
 can point to a pool of servers:
 

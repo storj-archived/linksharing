@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Storj Labs, Inc.
+// Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
 package main
@@ -18,21 +18,22 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	"storj.io/common/fpath"
+	"storj.io/linksharing"
+	"storj.io/linksharing/handler"
 	"storj.io/linksharing/httpserver"
-	"storj.io/linksharing/linksharing"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
 
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
-	Address      string        `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
-	LetsEncrypt  bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
-	CertFile     string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
-	KeyFile      string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL    string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	Address       string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
+	LetsEncrypt   bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
+	CertFile      string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
+	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
+	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
-	TxtRecordTTL time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
+  TxtRecordTTL  time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
 }
 
 var (
@@ -59,7 +60,7 @@ var (
 )
 
 func init() {
-	defaultConfDir := fpath.ApplicationDir("storj", "handler")
+	defaultConfDir := fpath.ApplicationDir("storj", "linksharing")
 	cfgstruct.SetupFlag(zap.L(), rootCmd, &confDir, "config-dir", defaultConfDir, "main directory for link sharing configuration")
 	defaults := cfgstruct.DefaultsFlag(rootCmd)
 	rootCmd.AddCommand(runCmd)
@@ -156,7 +157,7 @@ func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(parsedURL.Host),
-		Cache:      autocert.DirCache(".certs"),
+		Cache:      autocert.DirCache(filepath.Join(confDir, ".certs")),
 	}
 	tlsConfig = &tls.Config{
 		GetCertificate: certManager.GetCertificate,
