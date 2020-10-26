@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-  "io"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/spacemonkeygo/monkit/v3"
@@ -73,7 +72,7 @@ type Handler struct {
 	log        *zap.Logger
 	urlBase    *url.URL
 	templates  *template.Template
-	mapper    *objectmap.IPDB
+	mapper     *objectmap.IPDB
 	txtRecords *txtRecords
 }
 
@@ -96,7 +95,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		log:        log,
 		urlBase:    urlBase,
 		templates:  templates,
-		mapper:    mapper,
+		mapper:     mapper,
 		txtRecords: &txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
 	}, nil
 }
@@ -202,7 +201,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 
 			locations = append(locations, location)
 		}
-    
+
 		var input struct {
 			Name      string
 			Size      string

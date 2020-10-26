@@ -27,13 +27,13 @@ import (
 
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
-	Address       string `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
-	LetsEncrypt   bool   `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
-	CertFile      string `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
-	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
-	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
-  TxtRecordTTL  time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
+	Address       string        `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
+	LetsEncrypt   bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
+	CertFile      string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
+	KeyFile       string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
+	PublicURL     string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	GeoLocationDB string        `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
+	TxtRecordTTL  time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
 }
 
 var (
@@ -95,7 +95,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
 		Handler: handler.Config{
-			URLBase: runCfg.PublicURL,
+			URLBase:      runCfg.PublicURL,
 			TxtRecordTTL: runCfg.TxtRecordTTL,
 		},
 	})
