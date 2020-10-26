@@ -26,8 +26,11 @@ clients. Since there is currently no server affinity for requests, the URL
 can point to a pool of servers:
 
 ```
-$ linksharing setup --defaults release --public-url <PUBLIC URL>
+$ linksharing setup --defaults release --geo-location-db <PATH TO FILE> --public-url <PUBLIC URL> 
 ```
+
+**NOTE**: Please follow this link for instructions how to install/download the geo-location database:
+https://dev.maxmind.com/geoip/geoipupdate/
 
 Default release configuration has the link sharing service hosted on `:8443`
 serving HTTPS using a server certificate (`server.crt.pem`) and
@@ -87,3 +90,5 @@ The `--dns` flag will print out the info needed to create your dns records.
     
     
 4. That's it! You should be all set to share your files or directories with your custom domain.
+
+[Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
