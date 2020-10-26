@@ -1,64 +1,82 @@
 {{template "header.html"}}
 
-<div class="col">
-<div class="card directory">
+<nav class="navbar navbar-light">
+    <a class="navbar-brand" href="http://tardigrade.io/">
+        <img src="/static/img/logo.svg" alt="Tardigrade Logo" height="20px" loading="lazy" class="navbar-logo">
+    </a>
+    <div>
+        <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
+        <a href="https://tardigrade.io/signup" class="btn btn-outline-primary">Sign Up</a>
+    </div>
+</nav>
 
-    <section class="file-info text-left">
+<div class="bg-grey">
+    <div class="container-lg">
+        <div class="row justify-content-center">
 
-      <div class="row">
-        <div class="col">
-          <h2 class="directory-heading">{{.Bucket}}</h2>
-        </div>
-      </div>
+            <div class="col">
+                <div class="card directory my-5">
 
-      <div class="row">
-        <div class="col">
-          <h4 class="breadcrumbs">
-            {{range .Breadcrumbs}}
-            <a href="/{{.URL}}">{{.Prefix}}</a>
-            <span class="separator">/</span>
-            {{end}}
-          </h4>
-        </div>
-      </div>
+                    <section class="file-info text-left">
 
-      <a class="directory-link" href="../">
-        <div class="row">
-          <div class="col">
-            <img src="/static/img/back.svg" alt="Back">
-            <span class="directory-name">Back</span>
-          </div>
-        </div>
-      </a>
+                        <div class="row">
+                            <div class="col">
+                                <h2 class="directory-heading">{{.Bucket}}</h2>
+                            </div>
+                        </div>
 
-      {{range .Items}}
-        {{if .Prefix}}
-            <a class="directory-link" href="{{.Name}}">
-                <div class="row">
-                    <div class="col">
-                        <img src="/static/img/folder.svg" alt="Prefix"/>
-                        <span class="directory-name">{{.Name}}</span>
-                    </div>
+                        <div class="row">
+                            <div class="col">
+                                <h4 class="breadcrumbs">
+                                    {{range .Breadcrumbs}}
+                                        <a href="/{{.URL}}">{{.Prefix}}</a>
+                                        <span class="separator">/</span>
+                                    {{end}}
+                                </h4>
+                            </div>
+                        </div>
+
+                        <a class="directory-link" href="../">
+                            <div class="row">
+                                <div class="col">
+                                    <img src="/static/img/back.svg" alt="Back">
+                                    <span class="directory-name">Back</span>
+                                </div>
+                            </div>
+                        </a>
+
+                        {{range .Items}}
+                            {{if .Prefix}}
+                                <a class="directory-link" href="{{.Name}}">
+                                    <div class="row">
+                                        <div class="col">
+                                            <img src="/static/img/folder.svg" alt="Prefix"/>
+                                            <span class="directory-name">{{.Name}}</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            {{else}}
+                                <a class="directory-link" href="{{.Name}}">
+                                    <div class="row">
+                                        <div class="col-9 col-sm-10">
+                                            <img src="/static/img/file.svg" alt="Object"/>
+                                            <span class="directory-name">{{.Name}}</span>
+                                        </div>
+                                        <div class="col-3 col-sm-2 text-right">
+                                            <p class="directory-size">{{.Size}}</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            {{end}}
+                        {{end}}
+
+                    </section>
+
                 </div>
-            </a>
-        {{else}}
-            <a class="directory-link" href="{{.Name}}?download">
-                <div class="row">
-                    <div class="col-9 col-sm-10">
-                        <img src="/static/img/file.svg" alt="Object"/>
-                        <span class="directory-name">{{.Name}}</span>
-                    </div>
-                    <div class="col-3 col-sm-2 text-right">
-                        <p class="directory-size">{{.Size}}</p>
-                    </div>
-                </div>
-            </a>
-        {{end}}
-      {{end}}
+            </div>
 
-    </section>
-
-</div>
+        </div>
+    </div>
 </div>
 
 {{template "footer.html"}}
