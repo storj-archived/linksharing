@@ -3,17 +3,17 @@
 <div class="container-fluid">
   <div class="row">
 
-    <div class="col-lg-9 bg-grey">
+    <div class="col-lg-8 col-xl-9 bg-grey order-2 order-lg-1">
 
-      <div class="row">
-        <div class="col text-center mb-4">
+      <div class="row d-none d-lg-block mb-4">
+        <div class="col text-center">
           <a href="http://tardigrade.io/"><img src="/static/static/img/logo.svg" class="logo" alt="Logo"></a>
-          <p class="file-title-top text-center d-none d-md-inline-block">{{.Name}}</p>
+          <p class="file-title-top text-center">{{.Name}}</p>
         </div>
       </div>
 
-      <div class="row justify-content-center mt-5 mt-md-0">
-        <div class="col-sm-10 col-md-9 col-lg-12 col-xl-9">
+      <div class="row justify-content-center mt-3">
+        <div class="col-12 col-xl-9">
           <div class="card p-3 p-lg-5">
             <div class="row">
               <div class="col text-center mb-4 mt-3 mt-lg-0">
@@ -21,12 +21,13 @@
               </div>
             </div>
             <div class="row">
-              <div id="mapid" class="col-lg-8 text-center map">
+              <div id="mapid" class="col-12 col-lg-8 text-center map">
                 <script>
                   var mymap = L.map('mapid').setView([35, 10], 1.2);
 
                   L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYnJhbmRvbnN0b3JqIiwiYSI6ImNrZzlrcG1lcDByemgycm11MHBiZ2VhcGUifQ.kp78EgYfoLWzePO0f9cWVQ', {
                     maxZoom: 6,
+                    minZoom: 1,
                     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
                             '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
                             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -59,7 +60,7 @@
                   }
                 </script>
               </div>
-              <div class="col-lg-4">
+              <div class="col-12 col-lg-4 text-center text-lg-left">
                 <p class="mt-4"><strong>Status: <span>Ready for download</span></strong></p>
                 <p class="mt-4"><strong>File Size:</strong> <span>{{.Size}}</span></p>
                 <p class="mt-4"><strong>File Pieces:</strong> <span>{{.Pieces}}</span></p>
@@ -70,7 +71,7 @@
       </div>
 
       <div class="row justify-content-center">
-        <div class="col-10 col-md-8 text-center py-5">
+        <div class="col-12 col-sm-10 col-xl-8 text-center py-5">
           <h5 class="mb-3">You’re Downloading this File From All Over the World</h5>
           <p>Tardigrade distributes pieces of each file to a global network of independent nodes, and then recompiles them securely on download.  This means your data isn't being stored in an unsafe, centralized data center. The map above shows the location of the pieces of the file you are about to download.</p>
           <a href="https://tardigrade.io/how-it-works/" target="_blank" rel="noopener" class="btn btn-light btn-lg text-primary px-4 mt-2 mb-4">Learn More About Tardigrade</a>
@@ -79,25 +80,32 @@
 
     </div>
 
-    <div class="col-lg-3">
+    <div class="col-lg-4 col-xl-3 order-1 order-lg-2">
       <div class="row mb-5 mt-3">
         <div class="col-2">
-          <a href="?download" class="btn btn-outline-secondary"><img src="/static/static/img/icon-download-blue.svg" alt="Download"></a>
+          <a href="http://tardigrade.io/" class="d-block d-lg-none mt-1"><img src="/static/static/img/logo.svg" class="logo-mobile" alt="Logo"></a>
+          <a href="?download" class="btn btn-outline-secondary d-none d-lg-inline-block"><img src="/static/img/icon-download-blue.svg" alt="Download"></a>
         </div>
         <div class="col-10 text-right">
           <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
           <a href="https://tardigrade.io/signup" class="btn btn-outline-primary">Sign Up</a>
         </div>
       </div>
-      <div class="row">
+      <div class="row text-center text-lg-left">
         <div class="col">
           <div class="file">
-            <img src="/static/static/img/icon-file.svg" alt="File icon">
+            <img src="/static/static/img/icon-file.svg" class="d-block d-lg-inline-block mx-auto" alt="File icon">
             <h5 class="file-title-sidebar">{{.Name}}</h5>
           </div>
           <p class="mt-3">{{.Size}}</p>
-          <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
-          <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-4 border-2 btn-share">Share <img src="/static/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
+          <div class="row justify-content-center">
+            <div class="col-12 col-sm-4 col-lg-12">
+              <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
+            </div>
+            <div class="col-12 col-sm-4 col-lg-12">
+              <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-5 border-2 btn-share">Share <img src="/static/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -108,7 +116,7 @@
 <!-- Share Modal -->
 <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content text-center border-0 p-5">
+    <div class="modal-content text-center border-0 p-2 p-sm-4 p-md-5">
       <div class="modal-header border-0">
         <div class="copy-notification" id="copyNotification">
           <p class="copy-notification-text">Link Copied!</p>
