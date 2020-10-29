@@ -38,6 +38,7 @@ type Sharing struct {
 	templates SharingTemplates
 }
 
+// SharingTemplates holds all templates needed to be rendered.
 type SharingTemplates struct {
 	List         *template.Template
 	SingleObject *template.Template

@@ -17,6 +17,7 @@ var (
 	mon = monkit.Package()
 )
 
+// ObjectRanger holds all the data needed to make object downloadable.
 type ObjectRanger struct {
 	p      *uplink.Project
 	o      *uplink.Object

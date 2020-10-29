@@ -28,7 +28,7 @@ type Location struct {
 	Longitude float64
 }
 
-// Handler implements the link sharing HTTP console.
+// Service implements the link sharing HTTP console.
 //
 // architecture: Service
 type Service struct {
@@ -103,7 +103,7 @@ func (service *Service) GetSingleObjectLocations(ctx context.Context, serialized
 	return project, uplinkObject, locations, nil
 }
 
-// GetSingleObjectLocations returns uplink access string, project and specific object stored in bucket.
+// GetSingleObject returns uplink access string, project and specific object stored in bucket.
 func (service *Service) GetSingleObject(ctx context.Context, serializedAccess, bucketName, key string) (access *uplink.Access, project *uplink.Project, uplinkObject *uplink.Object, err error) {
 	access, err = uplink.ParseAccess(serializedAccess)
 	if err != nil {
