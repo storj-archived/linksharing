@@ -35,7 +35,7 @@ p, span, a {
 /* Navigation */
 
 .navbar {
-  padding: 8px 16px;
+  padding: 8px 16px;;
   border-bottom: 1px solid #f2f3f4;
   background: #fff;
 }
@@ -59,12 +59,13 @@ p, span, a {
 /* Buttons */
 
 .btn {
-  font-family: Poppins, sans-serif;
+  font-family: Poppins;
   font-weight: 700;
   font-size: 14px;
   line-height: 20px;
   text-align: center;
   letter-spacing: .25px;
+  text-align: center;
 }
 .btn-primary {
   color: #fff;
