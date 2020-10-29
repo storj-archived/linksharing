@@ -13,7 +13,7 @@ p, span, a {
 }
 
 .navbar {
-  padding: 8px 16px;;
+  padding: 8px 16px;
   border-bottom: 1px solid #f2f3f4;
   background: #fff;
 }
@@ -92,13 +92,12 @@ p, span, a {
 }
 
 .btn {
-  font-family: Poppins;
+  font-family: Poppins, sans-serif;
   font-weight: 700;
   font-size: 14px;
   line-height: 20px;
   text-align: center;
   letter-spacing: .25px;
-  text-align: center;
 }
 .btn-primary {
   color: #fff;
@@ -152,7 +151,7 @@ p, span, a {
 
 footer {
   background: #133e9c;
-  background-image: url('/static/img/footer-bg.svg'), radial-gradient(56.25% 326.37% at 50% 50%, #002674 0%, #000000 100%);
+  background-image: url('/static/static/img/footer-bg.svg'), radial-gradient(56.25% 326.37% at 50% 50%, #002674 0%, #000000 100%);
   background-size: cover;
   width: 100%;
   padding-top: 80px;

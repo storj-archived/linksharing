@@ -18,8 +18,7 @@ import (
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing"
-	"storj.io/linksharing/handler"
-	"storj.io/linksharing/httpserver"
+	"storj.io/linksharing/console/consoleserver"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
@@ -32,6 +31,7 @@ type LinkSharing struct {
 	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
 	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
+	StaticDir     string `user:"true" help:"path to static resources" devDefault:"" releaseDefault:""`
 }
 
 var (
@@ -85,15 +85,14 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	peer, err := linksharing.New(log, linksharing.Config{
-		Server: httpserver.Config{
+		Server: consoleserver.Config{
 			Name:            "Link Sharing",
 			Address:         runCfg.Address,
+			URLBase:         runCfg.PublicURL,
 			TLSConfig:       tlsConfig,
 			ShutdownTimeout: -1,
 			GeoLocationDB:   runCfg.GeoLocationDB,
-		},
-		Handler: handler.Config{
-			URLBase: runCfg.PublicURL,
+			StaticDir:       runCfg.StaticDir,
 		},
 	})
 	if err != nil {
@@ -160,7 +159,7 @@ func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
 		GetCertificate: certManager.GetCertificate,
 	}
 
-	// run HTTP Endpoint as redirect and challenge handler
+	// run HTTP Endpoint as redirect and challenge console
 	go func() {
 		_ = http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 	}()

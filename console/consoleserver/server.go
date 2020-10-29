@@ -1,22 +1,25 @@
 // Copyright (C) 2019 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package httpserver
+package consoleserver
 
 import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"html/template"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
-	"storj.io/linksharing/handler"
+	"storj.io/linksharing/console"
+	"storj.io/linksharing/console/consoleapi"
 )
 
 const (
@@ -33,6 +36,10 @@ type Config struct {
 	// Address is the address to bind the server to. It must be set.
 	Address string
 
+	// URLBase is the base URL of the link sharing handler. It is used
+	// to construct URLs returned to clients. It should be a fully formed URL.
+	URLBase string
+
 	// TLSConfig is the TLS configuration for the server. It is optional.
 	TLSConfig *tls.Config
 
@@ -44,37 +51,57 @@ type Config struct {
 
 	// Maxmind geolocation database path.
 	GeoLocationDB string
+
+	// path to static resources.
+	StaticDir string
 }
 
 // Server is the HTTP server.
 //
 // architecture: Endpoint
 type Server struct {
-	log     *zap.Logger
-	handler *handler.Handler
-	name    string
+	log  *zap.Logger
+	name string
 
+	service         *console.Service
 	listener        net.Listener
-	server          *http.Server
 	shutdownTimeout time.Duration
+	server          *http.Server
+
+	templates consoleapi.SharingTemplates
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, listener net.Listener, handler *handler.Handler, config Config) (*Server, error) {
+func New(log *zap.Logger, listener net.Listener, service *console.Service, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")
-	case handler == nil:
-		return nil, errs.New("server handler is required")
+	case service == nil:
+		return nil, errs.New("server service is required")
 	}
 
-	mux := http.NewServeMux()
-	// TODO add static folder location to handler configuration
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	mux.Handle("/", handler)
+	linksharingServer := &Server{}
+
+	err := linksharingServer.initializeTemplates()
+	if err != nil {
+		return nil, err
+	}
+
+	sharingController := consoleapi.NewSharing(log, service, linksharingServer.templates)
+
+	router := mux.NewRouter()
+	fs := http.FileServer(http.Dir(config.StaticDir))
+
+	router.HandleFunc("/{serialized-access}/{bucket-name}", sharingController.BucketFiles).Methods(http.MethodGet)
+	router.HandleFunc("/{serialized-access}/{bucket-name}/{file-name}", sharingController.File).Methods(http.MethodGet)
+	router.HandleFunc("/raw/{serialized-access}/{bucket-name}/{file-name}", sharingController.OpenFile).Methods(http.MethodGet)
+
+	if config.StaticDir != "" {
+		router.PathPrefix("/static/").Handler(http.StripPrefix("/static", fs))
+	}
 
 	server := &http.Server{
-		Handler:   mux,
+		Handler:   router,
 		TLSConfig: config.TLSConfig,
 		ErrorLog:  zap.NewStdLog(log),
 	}
@@ -87,20 +114,25 @@ func New(log *zap.Logger, listener net.Listener, handler *handler.Handler, confi
 		log = log.With(zap.String("server", config.Name))
 	}
 
-	return &Server{
-		log:             log,
-		name:            config.Name,
-		listener:        listener,
-		server:          server,
-		shutdownTimeout: config.ShutdownTimeout,
-		handler:         handler,
-	}, nil
+	linksharingServer.log = log
+	linksharingServer.name = config.Name
+	linksharingServer.listener = listener
+	linksharingServer.server = server
+	linksharingServer.shutdownTimeout = config.ShutdownTimeout
+	linksharingServer.service = service
+
+	return linksharingServer, nil
 }
 
 // Run runs the server until it's either closed or it errors.
 func (server *Server) Run(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	var group errgroup.Group
+
+	err = server.initializeTemplates()
+	if err != nil {
+		return err
+	}
 
 	group.Go(func() error {
 		<-ctx.Done()
@@ -133,6 +165,26 @@ func (server *Server) Addr() string {
 // Close closes server and underlying listener.
 func (server *Server) Close() error {
 	return errs.Combine(server.server.Close(), server.listener.Close())
+}
+
+// initializeTemplates is used to initialize all templates.
+func (server *Server) initializeTemplates() (err error) {
+	server.templates.List, err = template.ParseFiles("./static/templates/prefix-listing.html", "./static/templates/header.html", "./static/templates/footer.html")
+	if err != nil {
+		return err
+	}
+
+	server.templates.SingleObject, err = template.ParseFiles("./static/templates/single-object.html", "./static/templates/header.html", "./static/templates/footer.html")
+	if err != nil {
+		return err
+	}
+
+	server.templates.NotFound, err = template.ParseFiles("./static/templates/404.html", "./static/templates/header.html", "./static/templates/footer.html")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {

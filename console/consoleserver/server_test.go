@@ -1,7 +1,7 @@
 // Copyright (C) 2019 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package httpserver
+package consoleserver
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 
 	"storj.io/common/pkcrypto"
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/handler"
+	"storj.io/linksharing/console"
 	"storj.io/linksharing/objectmap"
 )
 
@@ -39,12 +39,8 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
-	handlerConfig := handler.Config{
-		URLBase:   "https://localhost:15001",
-		Templates: "../templates/*.html",
-	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
-	handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
+	service, err := console.NewService(zaptest.NewLogger(t), mapper)
 	require.NoError(t, err)
 
 	tlsConfig := &tls.Config{
@@ -58,41 +54,36 @@ func TestServer(t *testing.T) {
 
 	testCases := []serverTestCase{
 		{
-			Mapper:        mapper,
-			HandlerConfig: handlerConfig,
-			Name:          "missing address",
-			Handler:       handler,
-			NewErr:        "server address is required",
+			Mapper:  mapper,
+			Name:    "missing address",
+			Service: service,
+			NewErr:  "server address is required",
 		},
 		{
-			Mapper:        mapper,
-			HandlerConfig: handlerConfig,
-			Name:          "bad address",
-			Address:       "this is no good",
-			Handler:       handler,
-			NewErr:        "unable to listen on this is no good: listen tcp: address this is no good: missing port in address",
+			Mapper:  mapper,
+			Name:    "bad address",
+			Address: "this is no good",
+			Service: service,
+			NewErr:  "unable to listen on this is no good: listen tcp: address this is no good: missing port in address",
 		},
 		{
-			Mapper:        mapper,
-			HandlerConfig: handlerConfig,
-			Name:          "missing handler",
-			Address:       address,
-			NewErr:        "server handler is required",
+			Mapper:  mapper,
+			Name:    "missing console",
+			Address: address,
+			NewErr:  "server service is required",
 		},
 		{
-			Mapper:        mapper,
-			HandlerConfig: handlerConfig,
-			Name:          "success via HTTP",
-			Address:       address,
-			Handler:       handler,
+			Mapper:  mapper,
+			Name:    "success via HTTP",
+			Address: address,
+			Service: service,
 		},
 		{
-			Mapper:        mapper,
-			HandlerConfig: handlerConfig,
-			Name:          "success via HTTPS",
-			Address:       address,
-			Handler:       handler,
-			TLSConfig:     tlsConfig,
+			Mapper:    mapper,
+			Name:      "success via HTTPS",
+			Address:   address,
+			Service:   service,
+			TLSConfig: tlsConfig,
 		},
 	}
 
@@ -119,13 +110,12 @@ func TestServer(t *testing.T) {
 }
 
 type serverTestCase struct {
-	Mapper        *objectmap.IPDB
-	HandlerConfig handler.Config
-	Name          string
-	Address       string
-	Handler       *handler.Handler
-	TLSConfig     *tls.Config
-	NewErr        string
+	Mapper    *objectmap.IPDB
+	Name      string
+	Address   string
+	Service   *console.Service
+	TLSConfig *tls.Config
+	NewErr    string
 }
 
 func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
@@ -134,7 +124,7 @@ func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
 		return nil, false
 	}
 
-	s, err := New(zaptest.NewLogger(tb), listener, testCase.Handler, Config{
+	s, err := New(zaptest.NewLogger(tb), listener, testCase.Service, Config{
 		Name:      "test",
 		Address:   testCase.Address,
 		TLSConfig: testCase.TLSConfig,

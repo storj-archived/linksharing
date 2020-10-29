@@ -7,7 +7,7 @@
 
       <div class="row">
         <div class="col text-center mb-4">
-          <a href="http://tardigrade.io/"><img src="/static/img/logo.svg" class="logo" alt="Logo"></a>
+          <a href="http://tardigrade.io/"><img src="/static/static/img/logo.svg" class="logo" alt="Logo"></a>
           <p class="file-title-top text-center d-none d-md-inline-block">{{.Name}}</p>
         </div>
       </div>
@@ -82,7 +82,7 @@
     <div class="col-lg-3">
       <div class="row mb-5 mt-3">
         <div class="col-2">
-          <a href="?download" class="btn btn-outline-secondary"><img src="/static/img/icon-download-blue.svg" alt="Download"></a>
+          <a href="?download" class="btn btn-outline-secondary"><img src="/static/static/img/icon-download-blue.svg" alt="Download"></a>
         </div>
         <div class="col-10 text-right">
           <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
@@ -92,12 +92,12 @@
       <div class="row">
         <div class="col">
           <div class="file">
-            <img src="/static/img/icon-file.svg" alt="File icon">
+            <img src="/static/static/img/icon-file.svg" alt="File icon">
             <h5 class="file-title-sidebar">{{.Name}}</h5>
           </div>
           <p class="mt-3">{{.Size}}</p>
-          <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
-          <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-4 border-2 btn-share">Share <img src="/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
+          <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
+          <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-4 border-2 btn-share">Share <img src="/static/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
         </div>
       </div>
     </div>
@@ -136,6 +136,7 @@
     document.getElementById("backdrop").style.display = "block"
     document.getElementById("shareModal").style.display = "block"
     document.getElementById("shareModal").className += "show"
+    input.value = window.location.href;
   }
 
   function closeModal() {
@@ -157,10 +158,6 @@
       if (event.target == modal) {
           closeModal()
       }
-  }
-
-  window.onload = () => {
-    input.setAttribute('value', window.location.href);
   }
 </script>
 
