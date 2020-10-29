@@ -4,11 +4,8 @@
 package consoleapi
 
 import (
-	"encoding/json"
-	"errors"
 	"html/template"
 	"net/http"
-	"net/url"
 
 	"github.com/gorilla/mux"
 	"github.com/spacemonkeygo/monkit/v3"
@@ -19,7 +16,6 @@ import (
 	"storj.io/common/ranger/httpranger"
 	"storj.io/linksharing/console"
 	"storj.io/linksharing/objectranger"
-	"storj.io/uplink"
 )
 
 const (
@@ -40,7 +36,6 @@ type Sharing struct {
 
 	service   *console.Service
 	templates SharingTemplates
-	urlBase   *url.URL
 }
 
 type SharingTemplates struct {
@@ -210,43 +205,6 @@ func (sharing *Sharing) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	httpranger.ServeContent(ctx, w, r, fileName, object.System.Created, objectranger.NewObjectRanger(project, object, bucketName))
-}
-
-// serveJSONError writes JSON error to response output stream.
-func (sharing *Sharing) serveJSONError(w http.ResponseWriter, status int, err error) {
-	w.WriteHeader(status)
-
-	var response struct {
-		Error string `json:"error"`
-	}
-
-	response.Error = err.Error()
-
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		sharing.log.Error("failed to write json error response", zap.Error(ErrSharingAPI.Wrap(err)))
-		return
-	}
-}
-
-func (sharing *Sharing) handleUplinkErr(w http.ResponseWriter, action string, err error) {
-	switch {
-	case errors.Is(err, uplink.ErrBucketNotFound):
-		w.WriteHeader(http.StatusNotFound)
-		err = sharing.templates.NotFound.Execute(w, "Oops! Bucket not found.")
-		if err != nil {
-			sharing.log.Error("error while executing template", zap.Error(err))
-		}
-	case errors.Is(err, uplink.ErrObjectNotFound):
-		w.WriteHeader(http.StatusNotFound)
-		err = sharing.templates.NotFound.Execute(w, "Oops! Object not found.")
-		if err != nil {
-			sharing.log.Error("error while executing template", zap.Error(err))
-		}
-	default:
-		sharing.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
-		http.Error(w, "unable to handle request", http.StatusInternalServerError)
-	}
 }
 
 func getSerializedAccess(w http.ResponseWriter, r *http.Request) string {

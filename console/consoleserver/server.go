@@ -131,6 +131,7 @@ func (server *Server) Run(ctx context.Context) (err error) {
 
 	err = server.initializeTemplates()
 	if err != nil {
+		defer cancel()
 		return err
 	}
 
