@@ -70,7 +70,7 @@ func TestServer(t *testing.T) {
 			Mapper:  mapper,
 			Name:    "missing sharing",
 			Address: address,
-			NewErr:  "server service is required",
+			NewErr:  "sharing service is required",
 		},
 		{
 			Mapper:  mapper,
