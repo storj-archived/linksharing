@@ -76,7 +76,7 @@ func New(log *zap.Logger, listener net.Listener, service *sharing.Service, confi
 	case config.Address == "":
 		return nil, errs.New("server address is required")
 	case service == nil:
-		return nil, errs.New("server service is required")
+		return nil, errs.New("sharing service is required")
 	}
 
 	linksharingServer := &Server{}

@@ -18,7 +18,7 @@ import (
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing"
-	"storj.io/linksharing/sharing/httpserver"
+	"storj.io/linksharing/httpserver"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )

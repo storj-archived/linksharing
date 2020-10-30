@@ -13,9 +13,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/objectmap"
 	"storj.io/linksharing/sharing"
-	"storj.io/linksharing/sharing/httpserver"
 )
 
 // Config contains configurable values for sno registration Peer.

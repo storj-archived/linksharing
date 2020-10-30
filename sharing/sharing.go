@@ -83,8 +83,19 @@ func (sharing *Sharing) BucketFiles(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set(contentType, html)
 
-	serializedAccess := getSerializedAccess(w, r)
-	bucketName := getBucketName(w, r)
+	params := mux.Vars(r)
+
+	serializedAccess, ok := params["serialized-access"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	bucketName, ok := params["bucket-name"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": bucket name parameter is missing", http.StatusBadRequest)
+		return
+	}
 
 	project, objects, err := sharing.service.GetBucketObjects(ctx, serializedAccess, bucketName)
 	if err != nil {
@@ -129,9 +140,25 @@ func (sharing *Sharing) File(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set(contentType, html)
 
-	serializedAccess := getSerializedAccess(w, r)
-	bucketName := getBucketName(w, r)
-	fileName := getFileName(w, r)
+	params := mux.Vars(r)
+
+	serializedAccess, ok := params["serialized-access"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	bucketName, ok := params["bucket-name"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": bucket name parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	fileName, ok := params["file-name"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": file name parameter is missing", http.StatusBadRequest)
+		return
+	}
 
 	project, object, locations, err := sharing.service.GetSingleObjectLocations(ctx, serializedAccess, bucketName, fileName)
 	if err != nil {
@@ -184,9 +211,25 @@ func (sharing *Sharing) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set(contentType, plain)
 
-	serializedAccess := getSerializedAccess(w, r)
-	bucketName := getBucketName(w, r)
-	fileName := getFileName(w, r)
+	params := mux.Vars(r)
+
+	serializedAccess, ok := params["serialized-access"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	bucketName, ok := params["bucket-name"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": bucket name parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	fileName, ok := params["file-name"]
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": file name parameter is missing", http.StatusBadRequest)
+		return
+	}
 
 	_, project, object, err := sharing.service.GetSingleObject(ctx, serializedAccess, bucketName, fileName)
 	if err != nil {
@@ -205,40 +248,4 @@ func (sharing *Sharing) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	httpranger.ServeContent(ctx, w, r, fileName, object.System.Created, objectranger.NewObjectRanger(project, object, bucketName))
-}
-
-func getSerializedAccess(w http.ResponseWriter, r *http.Request) string {
-	params := mux.Vars(r)
-
-	serializedAccess, ok := params["serialized-access"]
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is missing", http.StatusBadRequest)
-		return ""
-	}
-
-	return serializedAccess
-}
-
-func getBucketName(w http.ResponseWriter, r *http.Request) string {
-	params := mux.Vars(r)
-
-	bucketName, ok := params["bucket-name"]
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest)+": bucket name parameter is missing", http.StatusBadRequest)
-		return ""
-	}
-
-	return bucketName
-}
-
-func getFileName(w http.ResponseWriter, r *http.Request) string {
-	params := mux.Vars(r)
-
-	fileName, ok := params["file-name"]
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest)+": file name parameter is missing", http.StatusBadRequest)
-		return ""
-	}
-
-	return fileName
 }

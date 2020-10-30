@@ -56,11 +56,8 @@ func (service *Service) GetBucketObjects(ctx context.Context, serializedAccess, 
 		return nil, nil, ErrUplink.Wrap(err)
 	}
 
-	// TODO: update in future
-	key := ""
-
 	objectIterator := project.ListObjects(ctx, bucketName, &uplink.ListObjectsOptions{
-		Prefix: key,
+		Prefix: "",
 		System: true,
 	})
 	for objectIterator.Next() {
