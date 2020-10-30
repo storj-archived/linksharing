@@ -1,7 +1,7 @@
 // Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package console
+package sharing
 
 import (
 	"context"
@@ -18,7 +18,7 @@ var (
 	// ErrUplink - uplink error type.
 	ErrUplink = errs.Class("uplink error")
 	// ErrValidate indicates that some entity validation is failed.
-	ErrValidate = errs.Class("console validation error")
+	ErrValidate = errs.Class("sharing validation error")
 )
 
 // Location represents geographical points
@@ -28,7 +28,7 @@ type Location struct {
 	Longitude float64
 }
 
-// Service implements the link sharing HTTP console.
+// Service implements the link sharing HTTP.
 //
 // architecture: Service
 type Service struct {
@@ -36,7 +36,7 @@ type Service struct {
 	mapper *objectmap.IPDB
 }
 
-// NewService creates a new link sharing HTTP console.
+// NewService creates a new link sharing HTTP.
 func NewService(log *zap.Logger, mapper *objectmap.IPDB) (*Service, error) {
 	return &Service{
 		log:    log,

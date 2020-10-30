@@ -18,7 +18,7 @@ import (
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing"
-	"storj.io/linksharing/console/consoleserver"
+	"storj.io/linksharing/sharing/httpserver"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
@@ -85,7 +85,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	peer, err := linksharing.New(log, linksharing.Config{
-		Server: consoleserver.Config{
+		Server: httpserver.Config{
 			Name:            "Link Sharing",
 			Address:         runCfg.Address,
 			URLBase:         runCfg.PublicURL,
@@ -159,7 +159,7 @@ func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
 		GetCertificate: certManager.GetCertificate,
 	}
 
-	// run HTTP Endpoint as redirect and challenge console
+	// run HTTP Endpoint as redirect and challenge handler
 	go func() {
 		_ = http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 	}()

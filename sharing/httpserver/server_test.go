@@ -1,7 +1,7 @@
 // Copyright (C) 2019 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package consoleserver
+package httpserver
 
 import (
 	"context"
@@ -23,8 +23,8 @@ import (
 
 	"storj.io/common/pkcrypto"
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/console"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
 )
 
 var (
@@ -40,7 +40,7 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
-	service, err := console.NewService(zaptest.NewLogger(t), mapper)
+	service, err := sharing.NewService(zaptest.NewLogger(t), mapper)
 	require.NoError(t, err)
 
 	tlsConfig := &tls.Config{
@@ -68,7 +68,7 @@ func TestServer(t *testing.T) {
 		},
 		{
 			Mapper:  mapper,
-			Name:    "missing console",
+			Name:    "missing sharing",
 			Address: address,
 			NewErr:  "server service is required",
 		},
@@ -113,7 +113,7 @@ type serverTestCase struct {
 	Mapper    *objectmap.IPDB
 	Name      string
 	Address   string
-	Service   *console.Service
+	Service   *sharing.Service
 	TLSConfig *tls.Config
 	NewErr    string
 }

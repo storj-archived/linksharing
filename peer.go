@@ -13,24 +13,24 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"storj.io/linksharing/console"
-	"storj.io/linksharing/console/consoleserver"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
+	"storj.io/linksharing/sharing/httpserver"
 )
 
 // Config contains configurable values for sno registration Peer.
 type Config struct {
-	Server consoleserver.Config
+	Server httpserver.Config
 }
 
-// Peer is the representation of a Linksharing console itself.
+// Peer is the representation of a Linksharing itself.
 //
 // architecture: Peer
 type Peer struct {
 	Log      *zap.Logger
 	Mapper   *objectmap.IPDB
 	Listener net.Listener
-	Server   *consoleserver.Server
+	Server   *httpserver.Server
 }
 
 // New is a constructor for Linksharing Peer.
@@ -45,7 +45,7 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 	}
 	peer.Mapper = objectmap.NewIPDB(reader)
 
-	service, err := console.NewService(log, peer.Mapper)
+	service, err := sharing.NewService(log, peer.Mapper)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 		return nil, errs.New("unable to listen on %s: %v", config.Server.Address, err)
 	}
 
-	peer.Server, err = consoleserver.New(log, peer.Listener, service, config.Server)
+	peer.Server, err = httpserver.New(log, peer.Listener, service, config.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -63,11 +63,11 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 	return peer, nil
 }
 
-// Run runs SNO registration console until it's either closed or it errors.
+// Run runs linksharing until it's either closed or it errors.
 func (peer *Peer) Run(ctx context.Context) error {
 	group, ctx := errgroup.WithContext(ctx)
 
-	// start SNO registration console as a separate goroutine.
+	// start linksharing as a separate goroutine.
 	group.Go(func() error {
 		return ignoreCancel(peer.Server.Run(ctx))
 	})

@@ -11,9 +11,8 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/console"
-	"storj.io/linksharing/console/consoleapi"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
 )
 
 func TestNewSharing(t *testing.T) {
@@ -35,17 +34,17 @@ func TestNewSharing(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, errorTmpl)
 
-		templates := consoleapi.SharingTemplates{
+		templates := sharing.Templates{
 			List:         listTmpl,
 			SingleObject: singleTmpl,
 			NotFound:     errorTmpl,
 		}
 
-		service, err := console.NewService(zaptest.NewLogger(t), mapper)
+		service, err := sharing.NewService(zaptest.NewLogger(t), mapper)
 		require.NoError(t, err)
 		require.NotNil(t, service)
 
-		sharing := consoleapi.NewSharing(zaptest.NewLogger(t), service, templates)
+		sharing := sharing.NewSharing(zaptest.NewLogger(t), service, templates)
 		require.NotNil(t, sharing)
 	})
 }

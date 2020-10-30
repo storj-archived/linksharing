@@ -1,7 +1,7 @@
 // Copyright (C) 2020 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package consoleapi
+package sharing
 
 import (
 	"html/template"
@@ -14,7 +14,6 @@ import (
 
 	"storj.io/common/memory"
 	"storj.io/common/ranger/httpranger"
-	"storj.io/linksharing/console"
 	"storj.io/linksharing/objectranger"
 )
 
@@ -27,19 +26,19 @@ const (
 
 var mon = monkit.Package()
 
-// ErrSharingAPI - console link sharing api error type.
-var ErrSharingAPI = errs.Class("linksharing console web error")
+// ErrSharingAPI - link sharing api error type.
+var ErrSharingAPI = errs.Class("linksharing web error")
 
 // Sharing is an api controller that exposes all link sharing related api.
 type Sharing struct {
 	log *zap.Logger
 
-	service   *console.Service
-	templates SharingTemplates
+	service   *Service
+	templates Templates
 }
 
-// SharingTemplates holds all templates needed to be rendered.
-type SharingTemplates struct {
+// Templates holds all templates needed to be rendered.
+type Templates struct {
 	List         *template.Template
 	SingleObject *template.Template
 	NotFound     *template.Template
@@ -63,12 +62,12 @@ type File struct {
 type SingleFile struct {
 	Name      string
 	Size      string
-	Locations []console.Location
+	Locations []Location
 	Pieces    int64
 }
 
 // NewSharing is a constructor for a link sharing controller.
-func NewSharing(log *zap.Logger, service *console.Service, templates SharingTemplates) *Sharing {
+func NewSharing(log *zap.Logger, service *Service, templates Templates) *Sharing {
 	return &Sharing{
 		log:       log,
 		templates: templates,
@@ -90,7 +89,7 @@ func (sharing *Sharing) BucketFiles(w http.ResponseWriter, r *http.Request) {
 	project, objects, err := sharing.service.GetBucketObjects(ctx, serializedAccess, bucketName)
 	if err != nil {
 		sharing.log.Error("could not get project files", zap.Error(err))
-		if console.ErrValidate.Has(err) {
+		if ErrValidate.Has(err) {
 			http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is invalid", http.StatusBadRequest)
 			return
 		}
@@ -137,7 +136,7 @@ func (sharing *Sharing) File(w http.ResponseWriter, r *http.Request) {
 	project, object, locations, err := sharing.service.GetSingleObjectLocations(ctx, serializedAccess, bucketName, fileName)
 	if err != nil {
 		sharing.log.Error("could not get project files", zap.Error(err))
-		if console.ErrValidate.Has(err) {
+		if ErrValidate.Has(err) {
 			http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is invalid", http.StatusBadRequest)
 			return
 		}
@@ -192,7 +191,7 @@ func (sharing *Sharing) OpenFile(w http.ResponseWriter, r *http.Request) {
 	_, project, object, err := sharing.service.GetSingleObject(ctx, serializedAccess, bucketName, fileName)
 	if err != nil {
 		sharing.log.Error("could not get project files", zap.Error(err))
-		if console.ErrValidate.Has(err) {
+		if ErrValidate.Has(err) {
 			http.Error(w, http.StatusText(http.StatusBadRequest)+": serialized access parameter is invalid", http.StatusBadRequest)
 			return
 		}

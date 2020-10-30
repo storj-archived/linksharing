@@ -1,7 +1,7 @@
 // Copyright (C) 2019 Storj Labs, Inc.
 // See LICENSE for copying information.
 
-package consoleserver
+package httpserver
 
 import (
 	"context"
@@ -18,8 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
-	"storj.io/linksharing/console"
-	"storj.io/linksharing/console/consoleapi"
+	"storj.io/linksharing/sharing"
 )
 
 const (
@@ -63,16 +62,16 @@ type Server struct {
 	log  *zap.Logger
 	name string
 
-	service         *console.Service
+	service         *sharing.Service
 	listener        net.Listener
 	shutdownTimeout time.Duration
 	server          *http.Server
 
-	templates consoleapi.SharingTemplates
+	templates sharing.Templates
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, listener net.Listener, service *console.Service, config Config) (*Server, error) {
+func New(log *zap.Logger, listener net.Listener, service *sharing.Service, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")
@@ -87,7 +86,7 @@ func New(log *zap.Logger, listener net.Listener, service *console.Service, confi
 		return nil, err
 	}
 
-	sharingController := consoleapi.NewSharing(log, service, linksharingServer.templates)
+	sharingController := sharing.NewSharing(log, service, linksharingServer.templates)
 
 	router := mux.NewRouter()
 	fs := http.FileServer(http.Dir(config.StaticDir))
