@@ -76,7 +76,7 @@ test: ## Run tests on source code (jenkins)
 ##@ Build
 
 .PHONY: images
-images: linksharing-image ## Build gateway Docker images
+images: linksharing-image ## Build linksharing Docker images
 	echo Built version: ${TAG}
 
 .PHONY: linksharing-image
