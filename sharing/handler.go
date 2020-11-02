@@ -79,8 +79,6 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 	}, nil
 }
 
-// TODO: i could assume that it is a business logic layer, so we should remove transport and server from here.
-
 // ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// serveHTTP handles the request in full. the error that is returned can
@@ -173,12 +171,12 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		}
 
 		var input struct {
-			Name      string
+			Key       string
 			Size      string
 			Locations []Location
 			Pieces    int64
 		}
-		input.Name = o.Key
+		input.Key = o.Key
 		input.Size = memory.Size(o.System.ContentLength).Base10String()
 		input.Locations = locations
 		input.Pieces = int64(len(locations))
@@ -196,8 +194,8 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 }
 
 func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, serializedAccess string, bucket, prefix string) (err error) {
-	type Item struct {
-		Name   string
+	type Object struct {
+		Key    string
 		Size   string
 		Prefix bool
 	}
@@ -208,11 +206,11 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	var input struct {
-		Bucket      string
+		BucketName  string
 		Breadcrumbs []Breadcrumb
-		Items       []Item
+		Objects     []Object
 	}
-	input.Bucket = bucket
+	input.BucketName = bucket
 	input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
 		Prefix: bucket,
 		URL:    serializedAccess + "/" + bucket + "/",
@@ -227,7 +225,7 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 		}
 	}
 
-	input.Items = make([]Item, 0)
+	input.Objects = make([]Object, 0)
 
 	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
 		Prefix: prefix,
@@ -237,9 +235,9 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	// TODO add paging
 	for objects.Next() {
 		item := objects.Item()
-		name := item.Key[len(prefix):]
-		input.Items = append(input.Items, Item{
-			Name:   name,
+		key := item.Key[len(prefix):]
+		input.Objects = append(input.Objects, Object{
+			Key:    key,
 			Size:   memory.Size(item.System.ContentLength).Base10String(),
 			Prefix: item.IsPrefix,
 		})

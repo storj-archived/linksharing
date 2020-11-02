@@ -21,7 +21,7 @@
 
             <div class="row">
               <div class="col">
-                <h2 class="directory-heading">{{.Bucket}}</h2>
+                <h2 class="directory-heading">{{.BucketName}}</h2>
               </div>
             </div>
 
@@ -45,22 +45,22 @@
               </div>
             </a>
 
-            {{range .Items}}
+            {{range .Objects}}
               {{if .Prefix}}
-                  <a class="directory-link" href="{{.Name}}">
+                  <a class="directory-link" href="{{.Key}}">
                       <div class="row">
                           <div class="col">
                               <img src="/static/img/folder.svg" alt="Prefix"/>
-                              <span class="directory-name">{{.Name}}</span>
+                              <span class="directory-name">{{.Key}}</span>
                           </div>
                       </div>
                   </a>
               {{else}}
-                  <a class="directory-link" href="{{.Name}}">
+                  <a class="directory-link" href="{{.Key}}">
                       <div class="row">
                           <div class="col-9 col-sm-10">
                               <img src="/static/img/file.svg" alt="Object"/>
-                              <span class="directory-name">{{.Name}}</span>
+                              <span class="directory-name">{{.Key}}</span>
                           </div>
                           <div class="col-3 col-sm-2 text-right">
                               <p class="directory-size">{{.Size}}</p>
