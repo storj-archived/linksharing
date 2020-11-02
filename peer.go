@@ -42,13 +42,13 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 
 	reader, err := maxminddb.Open(config.Server.GeoLocationDB)
 	if err != nil {
-		return nil, err
+		return nil, errs.New("unable to open geo location db: %w", err)
 	}
 	peer.Mapper = objectmap.NewIPDB(reader)
 
 	handle, err := sharing.NewHandler(log, peer.Mapper, config.Handler)
 	if err != nil {
-		return nil, err
+		return nil, errs.New("unable to create handler: %w", err)
 	}
 
 	peer.Listener, err = net.Listen("tcp", config.Server.Address)
@@ -58,7 +58,7 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 
 	peer.Server, err = httpserver.New(log, peer.Listener, handle, config.Server)
 	if err != nil {
-		return nil, err
+		return nil, errs.New("unable to create httpserver: %w", err)
 	}
 
 	return peer, nil
