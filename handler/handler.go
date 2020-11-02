@@ -113,7 +113,10 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	ctx := r.Context()
 	defer mon.Task()(&ctx)(&err)
 
-	if r.Host != handler.urlBase.Host {
+	// separate host and port, only compare hosts
+	reqHost, _, err := net.SplitHostPort(r.Host)
+	serverHost, _, err := net.SplitHostPort(handler.urlBase.Host)
+	if reqHost != serverHost {
 		return handler.handleHostingService(ctx, w, r)
 	}
 
