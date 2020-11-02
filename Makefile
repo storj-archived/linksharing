@@ -75,6 +75,21 @@ test: ## Run tests on source code (jenkins)
 
 ##@ Build
 
+.PHONY: images
+images: linksharing-image ## Build linksharing Docker images
+	echo Built version: ${TAG}
+
+.PHONY: linksharing-image
+linksharing-image: linksharing_linux_arm64 linksharing_linux_amd64 ## Build linksharing Docker image
+	${DOCKER_BUILD} --pull=true -t storjlabs/linksharing:${TAG}-amd64 \
+		-f Dockerfile .
+	${DOCKER_BUILD} --pull=true -t storjlabs/linksharing:${TAG}-arm32v6 \
+		--build-arg=GOARCH=arm --build-arg=DOCKER_ARCH=arm32v6 \
+		-f Dockerfile .
+	${DOCKER_BUILD} --pull=true -t storjlabs/linksharing:${TAG}-aarch64 \
+		--build-arg=GOARCH=arm64 --build-arg=DOCKER_ARCH=aarch64 \
+		-f Dockerfile .
+
 .PHONY: binary
 binary: CUSTOMTAG = -${GOOS}-${GOARCH}
 binary:
@@ -127,6 +142,25 @@ binaries: ${BINARIES} ## Build linksharing binaries (jenkins)
 
 ##@ Deploy
 
+.PHONY: push-images
+push-images: ## Push Docker images to Docker Hub (jenkins)
+	# images have to be pushed before a manifest can be created
+	for c in linksharing; do \
+		docker push storjlabs/$$c:${TAG}-amd64 \
+		&& docker push storjlabs/$$c:${TAG}-arm32v6 \
+		&& docker push storjlabs/$$c:${TAG}-aarch64 \
+		&& for t in ${TAG} ${LATEST_TAG}; do \
+			docker manifest create storjlabs/$$c:$$t \
+			storjlabs/$$c:${TAG}-amd64 \
+			storjlabs/$$c:${TAG}-arm32v6 \
+			storjlabs/$$c:${TAG}-aarch64 \
+			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}-amd64 --os linux --arch amd64 \
+			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}-arm32v6 --os linux --arch arm --variant v6 \
+			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}-aarch64 --os linux --arch arm64 \
+			&& docker manifest push --purge storjlabs/$$c:$$t \
+		; done \
+	; done
+
 .PHONY: binaries-upload
 binaries-upload: ## Upload binaries to Google Storage (jenkins)
 	cd "release/${TAG}"; for f in *; do \
@@ -146,11 +180,15 @@ binaries-upload: ## Upload binaries to Google Storage (jenkins)
 ##@ Clean
 
 .PHONY: clean
-clean: binaries-clean
+clean: binaries-clean clean-images ## Clean local release binaries, and local Docker images
 
 .PHONY: binaries-clean
 binaries-clean: ## Remove all local release binaries (jenkins)
 	rm -rf release
+
+.PHONY: clean-images
+clean-images:
+        -docker rmi storjlabs/linksharing:${TAG}
 
 .PHONY: bump-dependencies
 bump-dependencies:
