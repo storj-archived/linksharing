@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
-	"storj.io/linksharing/handler"
+	"storj.io/linksharing/sharing"
 )
 
 const (
@@ -51,7 +51,7 @@ type Config struct {
 // architecture: Endpoint
 type Server struct {
 	log     *zap.Logger
-	handler *handler.Handler
+	handler *sharing.Handler
 	name    string
 
 	listener        net.Listener
@@ -60,7 +60,7 @@ type Server struct {
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, listener net.Listener, handler *handler.Handler, config Config) (*Server, error) {
+func New(log *zap.Logger, listener net.Listener, handler *sharing.Handler, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")

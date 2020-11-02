@@ -14,8 +14,8 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/handler"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
 	"storj.io/storj/private/testplanet"
 )
 
@@ -25,52 +25,52 @@ func TestNewHandler(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		config handler.Config
+		config sharing.Config
 		err    string
 	}{
 		{
 			name: "URL base must be http or https",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "gopher://chunks",
 			},
 			err: "URL base must be http:// or https://",
 		},
 		{
 			name: "URL base must contain host",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://",
 			},
 			err: "URL base must contain host",
 		},
 		{
 			name: "URL base can have a port",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://host:99",
 			},
 		},
 		{
 			name: "URL base can have a path",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://host/gopher",
 			},
 		},
 		{
 			name: "URL base must not contain user info",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://joe@host",
 			},
 			err: "URL base must not contain user info",
 		},
 		{
 			name: "URL base must not contain query values",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://host/?gopher=chunks",
 			},
 			err: "URL base must not contain query values",
 		},
 		{
 			name: "URL base must not contain a fragment",
-			config: handler.Config{
+			config: sharing.Config{
 				URLBase: "http://host/#gopher-chunks",
 			},
 			err: "URL base must not contain a fragment",
@@ -83,7 +83,7 @@ func TestNewHandler(t *testing.T) {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testCase.config.Templates = "./../templates/*.html"
-			handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
+			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
 				return
@@ -223,7 +223,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, handler.Config{
+			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, sharing.Config{
 				URLBase:   "http://localhost",
 				Templates: "./../templates/*.html",
 			})

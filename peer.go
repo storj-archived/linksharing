@@ -13,15 +13,15 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"storj.io/linksharing/handler"
 	"storj.io/linksharing/httpserver"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
 )
 
 // Config contains configurable values for sno registration Peer.
 type Config struct {
 	Server  httpserver.Config
-	Handler handler.Config
+	Handler sharing.Config
 }
 
 // Peer is the representation of a Linksharing service itself.
@@ -46,7 +46,7 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 	}
 	peer.Mapper = objectmap.NewIPDB(reader)
 
-	handle, err := handler.NewHandler(log, peer.Mapper, config.Handler)
+	handle, err := sharing.NewHandler(log, peer.Mapper, config.Handler)
 	if err != nil {
 		return nil, err
 	}

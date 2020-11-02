@@ -23,8 +23,8 @@ import (
 
 	"storj.io/common/pkcrypto"
 	"storj.io/common/testcontext"
-	"storj.io/linksharing/handler"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/sharing"
 )
 
 var (
@@ -39,12 +39,12 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
-	handlerConfig := handler.Config{
+	handlerConfig := sharing.Config{
 		URLBase:   "https://localhost:15001",
 		Templates: "../templates/*.html",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
-	handler, err := handler.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
+	handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
 	require.NoError(t, err)
 
 	tlsConfig := &tls.Config{
@@ -120,10 +120,10 @@ func TestServer(t *testing.T) {
 
 type serverTestCase struct {
 	Mapper        *objectmap.IPDB
-	HandlerConfig handler.Config
+	HandlerConfig sharing.Config
 	Name          string
 	Address       string
-	Handler       *handler.Handler
+	Handler       *sharing.Handler
 	TLSConfig     *tls.Config
 	NewErr        string
 }

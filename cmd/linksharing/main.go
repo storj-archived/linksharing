@@ -18,8 +18,8 @@ import (
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing"
-	"storj.io/linksharing/handler"
 	"storj.io/linksharing/httpserver"
+	"storj.io/linksharing/sharing"
 	"storj.io/private/cfgstruct"
 	"storj.io/private/process"
 )
@@ -92,7 +92,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			ShutdownTimeout: -1,
 			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
-		Handler: handler.Config{
+		Handler: sharing.Config{
 			URLBase: runCfg.PublicURL,
 		},
 	})
