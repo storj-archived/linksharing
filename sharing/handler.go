@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -18,9 +17,9 @@ import (
 	"go.uber.org/zap"
 
 	"storj.io/common/memory"
-	"storj.io/common/ranger"
 	"storj.io/common/ranger/httpranger"
 	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/objectranger"
 	"storj.io/uplink"
 	"storj.io/uplink/private/object"
 )
@@ -189,7 +188,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		obj := segments[len(segments)-1]
 		w.Header().Set("Content-Disposition", "attachment; filename=\""+obj+"\"")
 	}
-	httpranger.ServeContent(ctx, w, r, key, o.System.Created, newObjectRanger(p, o, bucket))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(p, o, bucket))
 	return nil
 }
 
@@ -307,29 +306,6 @@ func parseRequestPath(p string) (rawRequest bool, _ *uplink.Access, serializedAc
 		return rawRequest, nil, "", "", "", err
 	}
 	return rawRequest, access, serializedAccess, bucket, key, nil
-}
-
-type objectRanger struct {
-	p      *uplink.Project
-	o      *uplink.Object
-	bucket string
-}
-
-func newObjectRanger(p *uplink.Project, o *uplink.Object, bucket string) ranger.Ranger {
-	return &objectRanger{
-		p:      p,
-		o:      o,
-		bucket: bucket,
-	}
-}
-
-func (ranger *objectRanger) Size() int64 {
-	return ranger.o.System.ContentLength
-}
-
-func (ranger *objectRanger) Range(ctx context.Context, offset, length int64) (_ io.ReadCloser, err error) {
-	defer mon.Task()(&ctx)(&err)
-	return ranger.p.DownloadObject(ctx, ranger.bucket, ranger.o.Key, &uplink.DownloadOptions{Offset: offset, Length: length})
 }
 
 func parseURLBase(s string) (*url.URL, error) {
