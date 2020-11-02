@@ -82,7 +82,7 @@ func TestNewHandler(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.config.Templates = "./../templates/*.html"
+			testCase.config.Templates = "./../web/*.html"
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
@@ -225,7 +225,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		t.Run(testCase.name, func(t *testing.T) {
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, sharing.Config{
 				URLBase:   "http://localhost",
-				Templates: "./../templates/*.html",
+				Templates: "./../web/*.html",
 			})
 			require.NoError(t, err)
 

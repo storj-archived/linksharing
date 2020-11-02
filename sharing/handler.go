@@ -64,7 +64,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 	}
 
 	if config.Templates == "" {
-		config.Templates = "./templates/*.html"
+		config.Templates = "./web/*.html"
 	}
 	templates, err := template.ParseGlob(config.Templates)
 	if err != nil {

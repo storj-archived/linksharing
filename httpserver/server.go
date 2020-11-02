@@ -70,7 +70,7 @@ func New(log *zap.Logger, listener net.Listener, handler *sharing.Handler, confi
 
 	mux := http.NewServeMux()
 	// TODO add static folder location to handler configuration
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
 	mux.Handle("/", handler)
 
 	server := &http.Server{
