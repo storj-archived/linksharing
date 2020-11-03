@@ -5,6 +5,8 @@ package objectmap
 
 import (
 	"net"
+	"strings"
+	"sync"
 
 	"github.com/zeebo/errs"
 )
@@ -37,12 +39,18 @@ type Reader interface {
 // architecture: Database
 type IPDB struct {
 	reader Reader
+
+	mu        sync.Mutex
+	cachedIPs map[string]IPInfo
 }
 
 // NewIPDB creates a new IPMapper instance.
 func NewIPDB(reader Reader) *IPDB {
+	cachedIPs := make(map[string]IPInfo)
+
 	return &IPDB{
-		reader: reader,
+		cachedIPs: cachedIPs,
+		reader:    reader,
 	}
 }
 
@@ -56,6 +64,10 @@ func (mapper *IPDB) Close() (err error) {
 
 // ValidateIP validate and remove port from IP address.
 func ValidateIP(ipAddress string) (net.IP, error) {
+	if strings.Count(ipAddress, ":") > 1 {
+		return nil, errs.New("IPv6 addresses are ignored for now: %s", ipAddress)
+	}
+
 	ip, _, err := net.SplitHostPort(ipAddress)
 	if err != nil {
 		ip = ipAddress // assume it had no port
@@ -81,7 +93,17 @@ func (mapper *IPDB) GetIPInfos(ipAddress string) (_ *IPInfo, err error) {
 		return nil, Error.Wrap(err)
 	}
 
-	err = mapper.reader.Lookup(parsed, &record)
+	mapper.mu.Lock()
+	defer mapper.mu.Unlock()
+	record, ok := mapper.cachedIPs[string(parsed)]
+	if !ok {
+		err = mapper.reader.Lookup(parsed, &record)
+		if err != nil {
+			return nil, Error.Wrap(err)
+		}
 
-	return &record, Error.Wrap(err)
+		mapper.cachedIPs[string(parsed)] = record
+	}
+
+	return &record, nil
 }
