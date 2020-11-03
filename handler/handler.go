@@ -118,13 +118,13 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	//if err != nil {
 	//	return err
 	//}
-	//serverHost, _, err := net.SplitHostPort(handler.urlBase.Host)
-	//if err != nil {
-	//	return err
-	//}
+	serverHost, _, err := net.SplitHostPort(handler.urlBase.Host)
+	if err != nil {
+		return err
+	}
 	fmt.Println("reqHost ", r.Host)
-	fmt.Println("serverHost ", handler.urlBase.Host)
-	if r.Host != handler.urlBase.Host {
+	fmt.Println("serverHost ", serverHost)
+	if r.Host != serverHost {
 		return handler.handleHostingService(ctx, w, r)
 	}
 
