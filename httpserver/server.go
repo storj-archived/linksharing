@@ -163,9 +163,9 @@ func (server *Server) Run(ctx context.Context) (err error) {
 	})
 
 	group.Go(func() (err error) {
-		defer cancel()
-
 		if server.serverTLS.TLSConfig != nil {
+			defer cancel()
+
 			server.log.With(zap.String("addr", server.AddrTLS())).Sugar().Info("HTTPS Server started")
 			err = server.serverTLS.ServeTLS(server.listenerTLS, "", "")
 
