@@ -68,10 +68,10 @@ type txtRecords struct {
 //
 // architecture: Service
 type Handler struct {
-	log       *zap.Logger
-	urlBase   *url.URL
-	templates *template.Template
-	mapper    *objectmap.IPDB
+	log        *zap.Logger
+	urlBase    *url.URL
+	templates  *template.Template
+	mapper     *objectmap.IPDB
 	txtRecords *txtRecords
 }
 
@@ -91,10 +91,10 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 	}
 
 	return &Handler{
-		log:       log,
-		urlBase:   urlBase,
-		templates: templates,
-		mapper:    mapper,
+		log:        log,
+		urlBase:    urlBase,
+		templates:  templates,
+		mapper:     mapper,
 		txtRecords: &txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
 	}, nil
 }
@@ -119,7 +119,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 	}
 
 	serverHost, _, err := net.SplitHostPort(handler.urlBase.Host)
-	if err != nil && err.Error() == "missing port in address"{
+	if err != nil && err.Error() == "missing port in address" {
 		serverHost = handler.urlBase.Host
 	} else if err != nil {
 		return err
