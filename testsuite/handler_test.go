@@ -14,10 +14,9 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
-	"storj.io/storj/private/testplanet"
-
 	"storj.io/linksharing/objectmap"
 	"storj.io/linksharing/sharing"
+	"storj.io/storj/private/testplanet"
 )
 
 func TestNewHandler(t *testing.T) {
