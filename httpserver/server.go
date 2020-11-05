@@ -155,16 +155,27 @@ func (server *Server) Run(ctx context.Context) (err error) {
 		server.log.With(zap.String("addr", server.Addr())).Sugar().Info("HTTP Server started")
 		err = server.server.Serve(server.listener)
 
-		if server.serverTLS.TLSConfig != nil {
-			server.log.With(zap.String("addr", server.AddrTLS())).Sugar().Info("HTTPS Server started")
-			err = server.serverTLS.ServeTLS(server.listenerTLS, "", "")
-		}
-
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
 		return err
+	})
+
+	group.Go(func() (err error) {
+		defer cancel()
+
+		if server.serverTLS.TLSConfig != nil {
+			server.log.With(zap.String("addr", server.AddrTLS())).Sugar().Info("HTTPS Server started")
+			err = server.serverTLS.ServeTLS(server.listenerTLS, "", "")
+
+			if errors.Is(err, http.ErrServerClosed) {
+				return nil
+			}
+			server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
+			return err
+		}
+		return nil
 	})
 
 	return group.Wait()
