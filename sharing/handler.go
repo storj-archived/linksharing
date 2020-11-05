@@ -394,7 +394,9 @@ func makeLocation(base *url.URL, reqPath string) string {
 // handleHostingService deals with linksharing via custom URLs.
 func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	host, _, err := net.SplitHostPort(r.Host)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "missing port in address") {
+		host = r.Host
+	} else if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
