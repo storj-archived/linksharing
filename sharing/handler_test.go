@@ -13,6 +13,50 @@ import (
 	"storj.io/storj/private/testplanet"
 )
 
+func TestCompareHosts(t *testing.T) {
+	testCases := []struct {
+		url1     string
+		url2     string
+		expected bool
+	}{
+		{
+			url1:     "website.com",
+			url2:     "website.com",
+			expected: true,
+		},
+		{
+			url1:     "website.com:443",
+			url2:     "website.com",
+			expected: true,
+		},
+		{
+			url1:     "website.com:443",
+			url2:     "website.com:443",
+			expected: true,
+		},
+		{
+			url1:     "website.com:443",
+			url2:     "website.com:880",
+			expected: true,
+		},
+		{
+			url1:     "website.com:443",
+			url2:     "site.com:443",
+			expected: false,
+		},
+		{
+			url1:     "website.com",
+			url2:     "site.com",
+			expected: false,
+		},
+	}
+	for _, testCase := range testCases {
+		result, err := compareHosts(testCase.url1, testCase.url2)
+		assert.NoError(t, err)
+		assert.Equal(t, testCase.expected, result)
+	}
+}
+
 func TestParseRecords(t *testing.T) {
 	ctx := testcontext.New(t)
 	defer ctx.Cleanup()
