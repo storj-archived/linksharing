@@ -16,3 +16,6 @@
 
 # avoid pushing maxmind databases
 *.mmdb
+
+# Ignore release directory
+release/
