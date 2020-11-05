@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
@@ -32,6 +33,7 @@ type LinkSharing struct {
 	KeyFile       string `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
 	PublicURL     string `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 	GeoLocationDB string `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
+	TxtRecordTTL  time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
 }
 
 var (
@@ -94,6 +96,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 		},
 		Handler: sharing.Config{
 			URLBase: runCfg.PublicURL,
+			TxtRecordTTL: runCfg.TxtRecordTTL,
 		},
 	})
 	if err != nil {
