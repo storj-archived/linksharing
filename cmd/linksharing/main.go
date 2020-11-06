@@ -24,7 +24,7 @@ import (
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
 	Address       string        `user:"true" help:"public address to listen on" default:":8080"`
-	AddressTLS    string        `user:"true" help:"public tls address to listen on" default:""`
+	AddressTLS    string        `user:"true" help:"public tls address to listen on" default:":8443"`
 	LetsEncrypt   bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
 	CertFile      string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
 	KeyFile       string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
