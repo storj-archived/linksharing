@@ -149,6 +149,13 @@ func (server *Server) Run(ctx context.Context) (err error) {
 		server.log.Info("Server shutting down")
 		return shutdownWithTimeout(server.server, server.shutdownTimeout)
 	})
+
+	group.Go(func() error {
+		<-ctx.Done()
+		server.log.Info("ServerTLS shutting down")
+		return shutdownWithTimeout(server.serverTLS, server.shutdownTimeout)
+	})
+
 	group.Go(func() (err error) {
 		defer cancel()
 
@@ -199,6 +206,7 @@ func (server *Server) Close() error {
 	errlist.Add(server.listener.Close())
 
 	if server.listenerTLS != nil {
+		errlist.Add(server.serverTLS.Close())
 		errlist.Add(server.listenerTLS.Close())
 	}
 
@@ -251,7 +259,7 @@ func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config,
 
 func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {
 	if timeout < 0 {
-		return server.Close()
+		return errs.Combine(server.Close())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
