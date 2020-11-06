@@ -259,7 +259,7 @@ func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config,
 
 func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {
 	if timeout < 0 {
-		return errs.Combine(server.Close())
+		return server.Close()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
