@@ -52,7 +52,7 @@ type Config struct {
 	GeoLocationDB string
 }
 
-// TLSConfig is a struct to handle the preferred/configured TLS options
+// TLSConfig is a struct to handle the preferred/configured TLS options.
 type TLSConfig struct {
 	LetsEncrypt bool
 	CertFile    string
