@@ -6,7 +6,6 @@ package linksharing
 import (
 	"context"
 	"errors"
-	"net"
 
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/zeebo/errs"
@@ -28,10 +27,9 @@ type Config struct {
 //
 // architecture: Peer
 type Peer struct {
-	Log      *zap.Logger
-	Mapper   *objectmap.IPDB
-	Listener net.Listener
-	Server   *httpserver.Server
+	Log    *zap.Logger
+	Mapper *objectmap.IPDB
+	Server *httpserver.Server
 }
 
 // New is a constructor for Linksharing Peer.
@@ -51,12 +49,7 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 		return nil, errs.New("unable to create handler: %w", err)
 	}
 
-	peer.Listener, err = net.Listen("tcp", config.Server.Address)
-	if err != nil {
-		return nil, errs.New("unable to listen on %s: %v", config.Server.Address, err)
-	}
-
-	peer.Server, err = httpserver.New(log, peer.Listener, handle, config.Server)
+	peer.Server, err = httpserver.New(log, handle, config.Server)
 	if err != nil {
 		return nil, errs.New("unable to create httpserver: %w", err)
 	}
@@ -82,10 +75,6 @@ func (peer *Peer) Close() error {
 
 	if peer.Server != nil {
 		errlist.Add(peer.Server.Close())
-	}
-
-	if peer.Listener != nil {
-		errlist.Add(peer.Listener.Close())
 	}
 
 	if peer.Mapper != nil {

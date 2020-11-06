@@ -9,10 +9,13 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/url"
+	"path/filepath"
 	"time"
 
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
@@ -33,8 +36,11 @@ type Config struct {
 	// Address is the address to bind the server to. It must be set.
 	Address string
 
+	// AddressTLS is the address to bind the https server to. It must be set, but is not used if TLS is not configured.
+	AddressTLS string
+
 	// TLSConfig is the TLS configuration for the server. It is optional.
-	TLSConfig *tls.Config
+	TLSConfig *TLSConfig
 
 	// ShutdownTimeout controls how long to wait for requests to finish before
 	// returning from Run() after the context is canceled. It defaults to
@@ -46,6 +52,15 @@ type Config struct {
 	GeoLocationDB string
 }
 
+// TLSConfig is a struct to handle the preferred/configured TLS options
+type TLSConfig struct {
+	LetsEncrypt bool
+	CertFile    string
+	KeyFile     string
+	PublicURL   string
+	ConfigDir   string
+}
+
 // Server is the HTTP server.
 //
 // architecture: Endpoint
@@ -55,12 +70,14 @@ type Server struct {
 	name    string
 
 	listener        net.Listener
+	listenerTLS     net.Listener
 	server          *http.Server
+	serverTLS       *http.Server
 	shutdownTimeout time.Duration
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, listener net.Listener, handler *sharing.Handler, config Config) (*Server, error) {
+func New(log *zap.Logger, handler *sharing.Handler, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")
@@ -73,9 +90,32 @@ func New(log *zap.Logger, listener net.Listener, handler *sharing.Handler, confi
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
 	mux.Handle("/", handler)
 
+	tlsConfig, httpHandler, err := configureTLS(config.TLSConfig, mux)
+	if err != nil {
+		return nil, err
+	}
+
+	listener, err := net.Listen("tcp", config.Address)
+	if err != nil {
+		return nil, errs.New("unable to listen on %s: %v", config.Address, err)
+	}
+
+	var listenerTLS net.Listener
+	if tlsConfig != nil {
+		listenerTLS, err = net.Listen("tcp", config.AddressTLS)
+		if err != nil {
+			return nil, errs.New("unable to listen on %s: %v", config.AddressTLS, err)
+		}
+	}
+
 	server := &http.Server{
+		Handler:  httpHandler,
+		ErrorLog: zap.NewStdLog(log),
+	}
+
+	serverTLS := &http.Server{
 		Handler:   mux,
-		TLSConfig: config.TLSConfig,
+		TLSConfig: tlsConfig,
 		ErrorLog:  zap.NewStdLog(log),
 	}
 
@@ -91,7 +131,9 @@ func New(log *zap.Logger, listener net.Listener, handler *sharing.Handler, confi
 		log:             log,
 		name:            config.Name,
 		listener:        listener,
+		listenerTLS:     listenerTLS,
 		server:          server,
+		serverTLS:       serverTLS,
 		shutdownTimeout: config.ShutdownTimeout,
 		handler:         handler,
 	}, nil
@@ -109,17 +151,31 @@ func (server *Server) Run(ctx context.Context) (err error) {
 	})
 	group.Go(func() (err error) {
 		defer cancel()
-		server.log.With(zap.String("addr", server.Addr())).Sugar().Info("Server started")
-		if server.server.TLSConfig == nil {
-			err = server.server.Serve(server.listener)
-		} else {
-			err = server.server.ServeTLS(server.listener, "", "")
-		}
+
+		server.log.With(zap.String("addr", server.Addr())).Sugar().Info("HTTP Server started")
+		err = server.server.Serve(server.listener)
+
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
 		return err
+	})
+
+	group.Go(func() (err error) {
+		if server.serverTLS.TLSConfig != nil {
+			defer cancel()
+
+			server.log.With(zap.String("addr", server.AddrTLS())).Sugar().Info("HTTPS Server started")
+			err = server.serverTLS.ServeTLS(server.listenerTLS, "", "")
+
+			if errors.Is(err, http.ErrServerClosed) {
+				return nil
+			}
+			server.log.With(zap.Error(err)).Error("Server closed unexpectedly")
+			return err
+		}
+		return nil
 	})
 
 	return group.Wait()
@@ -130,9 +186,67 @@ func (server *Server) Addr() string {
 	return server.listener.Addr().String()
 }
 
-// Close closes server and underlying listener.
+// AddrTLS returns the public TLS address.
+func (server *Server) AddrTLS() string {
+	return server.listenerTLS.Addr().String()
+}
+
+// Close closes server.
 func (server *Server) Close() error {
-	return errs.Combine(server.server.Close(), server.listener.Close())
+	errlist := errs.Group{}
+
+	errlist.Add(server.server.Close())
+	errlist.Add(server.listener.Close())
+
+	if server.listenerTLS != nil {
+		errlist.Add(server.listenerTLS.Close())
+	}
+
+	return errlist.Err()
+}
+
+func configureTLS(config *TLSConfig, handler http.Handler) (*tls.Config, http.Handler, error) {
+
+	if config.LetsEncrypt {
+		return configureLetsEncrypt(config, handler)
+	}
+
+	switch {
+	case config.CertFile != "" && config.KeyFile != "":
+	case config.CertFile == "" && config.KeyFile == "":
+		return nil, handler, nil
+	case config.CertFile != "" && config.KeyFile == "":
+		return nil, nil, errs.New("key file must be provided with cert file")
+	case config.CertFile == "" && config.KeyFile != "":
+		return nil, nil, errs.New("cert file must be provided with key file")
+	}
+
+	cert, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
+	if err != nil {
+		return nil, nil, errs.New("unable to load server keypair: %v", err)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}, handler, nil
+}
+
+func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config, http.Handler, error) {
+	parsedURL, err := url.Parse(config.PublicURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(parsedURL.Host),
+		Cache:      autocert.DirCache(filepath.Join(config.ConfigDir, ".certs")),
+	}
+
+	tlsConfig := &tls.Config{
+		GetCertificate: certManager.GetCertificate,
+	}
+
+	return tlsConfig, certManager.HTTPHandler(handler), nil
 }
 
 func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {

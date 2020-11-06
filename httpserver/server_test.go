@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,12 +29,12 @@ import (
 )
 
 var (
-	testKey = mustSignerFromPEM(`-----BEGIN PRIVATE KEY-----
+	testKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgT8yIof+3qG3wQzXf
 eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 7/a1USmgsVWiZ0W3JopcTbTMhvMZk+2MKqtWcc3gHF4vRDnHTeQl4lsx
 -----END PRIVATE KEY-----
-`)
+`
 	testCert = mustCreateLocalhostCert()
 )
 
@@ -47,13 +48,30 @@ func TestServer(t *testing.T) {
 	handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
 	require.NoError(t, err)
 
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{testCert.Raw},
-				PrivateKey:  testKey,
-			},
-		},
+	tempdir := t.TempDir()
+	keyPath := filepath.Join(tempdir, "privkey.pem")
+	certPath := filepath.Join(tempdir, "public.pem")
+
+	err = ioutil.WriteFile(keyPath, []byte(testKey), 644)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(certPath, testCert.Raw, 644)
+	require.NoError(t, err)
+
+	tlsConfig := &TLSConfig{
+		CertFile:    certPath,
+		KeyFile:     keyPath,
+		LetsEncrypt: false,
+		ConfigDir:   tempdir,
+		PublicURL:   address,
+	}
+
+	noTLSConfig := &TLSConfig{
+		CertFile:    "",
+		KeyFile:     "",
+		LetsEncrypt: false,
+		ConfigDir:   tempdir,
+		PublicURL:   address,
 	}
 
 	testCases := []serverTestCase{
@@ -61,6 +79,7 @@ func TestServer(t *testing.T) {
 			Mapper:        mapper,
 			HandlerConfig: handlerConfig,
 			Name:          "missing address",
+			TLSConfig:     noTLSConfig,
 			Handler:       handler,
 			NewErr:        "server address is required",
 		},
@@ -69,6 +88,7 @@ func TestServer(t *testing.T) {
 			HandlerConfig: handlerConfig,
 			Name:          "bad address",
 			Address:       "this is no good",
+			TLSConfig:     noTLSConfig,
 			Handler:       handler,
 			NewErr:        "unable to listen on this is no good: listen tcp: address this is no good: missing port in address",
 		},
@@ -77,6 +97,7 @@ func TestServer(t *testing.T) {
 			HandlerConfig: handlerConfig,
 			Name:          "missing handler",
 			Address:       address,
+			TLSConfig:     noTLSConfig,
 			NewErr:        "server handler is required",
 		},
 		{
@@ -84,15 +105,17 @@ func TestServer(t *testing.T) {
 			HandlerConfig: handlerConfig,
 			Name:          "success via HTTP",
 			Address:       address,
+			TLSConfig:     noTLSConfig,
 			Handler:       handler,
 		},
 		{
 			Mapper:        mapper,
 			HandlerConfig: handlerConfig,
 			Name:          "success via HTTPS",
-			Address:       address,
-			Handler:       handler,
+			Address:       "localhost:15002",
+			AddressTLS:    address,
 			TLSConfig:     tlsConfig,
+			Handler:       handler,
 		},
 	}
 
@@ -123,21 +146,18 @@ type serverTestCase struct {
 	HandlerConfig sharing.Config
 	Name          string
 	Address       string
+	AddressTLS    string
 	Handler       *sharing.Handler
-	TLSConfig     *tls.Config
+	TLSConfig     *TLSConfig
 	NewErr        string
 }
 
 func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
-	listener, err := net.Listen("tcp", testCase.Address)
-	if err != nil {
-		return nil, false
-	}
-
-	s, err := New(zaptest.NewLogger(tb), listener, testCase.Handler, Config{
-		Name:      "test",
-		Address:   testCase.Address,
-		TLSConfig: testCase.TLSConfig,
+	s, err := New(zaptest.NewLogger(tb), testCase.Handler, Config{
+		Name:       "test",
+		Address:    testCase.Address,
+		AddressTLS: testCase.AddressTLS,
+		TLSConfig:  testCase.TLSConfig,
 	})
 	if testCase.NewErr != "" {
 		require.EqualError(tb, err, testCase.NewErr)
@@ -150,7 +170,7 @@ func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
 func (testCase *serverTestCase) DoGet(tb testing.TB, s *Server) {
 	scheme := "http"
 	client := &http.Client{}
-	if testCase.TLSConfig != nil {
+	if testCase.AddressTLS != "" {
 		scheme = "https"
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -179,13 +199,14 @@ func mustSignerFromPEM(keyBytes string) crypto.Signer {
 }
 
 func mustCreateLocalhostCert() *x509.Certificate {
+	privateKey := mustSignerFromPEM(testKey)
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(0),
 		NotAfter:     time.Now().Add(time.Hour),
 		DNSNames:     []string{"localhost"},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1)},
 	}
-	certDER, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, testKey.Public(), testKey)
+	certDER, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, privateKey.Public(), privateKey)
 	if err != nil {
 		panic(err)
 	}
