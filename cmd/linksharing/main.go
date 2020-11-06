@@ -4,10 +4,7 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/acme/autocert"
 
 	"storj.io/common/fpath"
 	"storj.io/linksharing"
@@ -27,7 +23,8 @@ import (
 
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
-	Address       string        `user:"true" help:"public address to listen on" devDefault:"localhost:8080" releaseDefault:":8443"`
+	Address       string        `user:"true" help:"public address to listen on" default:":8080"`
+	AddressTLS    string        `user:"true" help:"public tls address to listen on" default:":8443"`
 	LetsEncrypt   bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
 	CertFile      string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
 	KeyFile       string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
@@ -73,24 +70,18 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
-	var tlsConfig *tls.Config
-	if runCfg.LetsEncrypt {
-		tlsConfig, err = configureLetsEncrypt(runCfg.PublicURL)
-		if err != nil {
-			return err
-		}
-	} else {
-		tlsConfig, err = configureTLS(runCfg.CertFile, runCfg.KeyFile)
-		if err != nil {
-			return err
-		}
-	}
-
 	peer, err := linksharing.New(log, linksharing.Config{
 		Server: httpserver.Config{
-			Name:            "Link Sharing",
-			Address:         runCfg.Address,
-			TLSConfig:       tlsConfig,
+			Name:       "Link Sharing",
+			Address:    runCfg.Address,
+			AddressTLS: runCfg.AddressTLS,
+			TLSConfig: &httpserver.TLSConfig{
+				LetsEncrypt: runCfg.LetsEncrypt,
+				CertFile:    runCfg.CertFile,
+				KeyFile:     runCfg.KeyFile,
+				PublicURL:   runCfg.PublicURL,
+				ConfigDir:   confDir,
+			},
 			ShutdownTimeout: -1,
 			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
@@ -126,49 +117,6 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	return process.SaveConfig(cmd, filepath.Join(setupDir, "config.yaml"))
-}
-
-func configureTLS(certFile, keyFile string) (*tls.Config, error) {
-	switch {
-	case certFile != "" && keyFile != "":
-	case certFile == "" && keyFile == "":
-		return nil, nil
-	case certFile != "" && keyFile == "":
-		return nil, errs.New("key file must be provided with cert file")
-	case certFile == "" && keyFile != "":
-		return nil, errs.New("cert file must be provided with key file")
-	}
-
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, errs.New("unable to load server keypair: %v", err)
-	}
-
-	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}, nil
-}
-
-func configureLetsEncrypt(publicURL string) (tlsConfig *tls.Config, err error) {
-	parsedURL, err := url.Parse(publicURL)
-	if err != nil {
-		return nil, err
-	}
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(parsedURL.Host),
-		Cache:      autocert.DirCache(filepath.Join(confDir, ".certs")),
-	}
-	tlsConfig = &tls.Config{
-		GetCertificate: certManager.GetCertificate,
-	}
-
-	// run HTTP Endpoint as redirect and challenge handler
-	go func() {
-		_ = http.ListenAndServe(":http", certManager.HTTPHandler(nil))
-	}()
-
-	return tlsConfig, nil
 }
 
 func main() {
