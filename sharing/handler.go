@@ -12,9 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spacemonkeygo/monkit/v3"
@@ -52,18 +50,6 @@ type Location struct {
 	Longitude float64
 }
 
-type txtRecord struct {
-	access    *uplink.Access
-	root      string
-	timestamp time.Time
-}
-
-type txtRecords struct {
-	cache map[string]txtRecord
-	ttl   time.Duration
-	mu    sync.Mutex
-}
-
 // Handler implements the link sharing HTTP handler.
 //
 // architecture: Service
@@ -95,7 +81,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		urlBase:    urlBase,
 		templates:  templates,
 		mapper:     mapper,
-		txtRecords: &txtRecords{cache: map[string]txtRecord{}, ttl: config.TxtRecordTTL},
+		txtRecords: newTxtRecords(config.TxtRecordTTL),
 	}, nil
 }
 
@@ -402,7 +388,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		return err
 	}
 
-	access, root, err := handler.getRootAndAccess(host)
+	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
@@ -441,88 +427,4 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 
 	httpranger.ServeContent(ctx, w, r, pt, o.System.Created, objectranger.New(project, o, bucket))
 	return nil
-}
-
-// getRootAndAccess fetches the root and access grant from the cache or dns server when applicable.
-func (handler *Handler) getRootAndAccess(hostname string) (access *uplink.Access, root string, err error) {
-	record, exists := handler.checkCache(hostname)
-	if exists {
-		return record.access, record.root, nil
-	}
-	access, root, err = getRemoteRecord(hostname)
-	if err != nil {
-		return access, root, err
-	}
-	handler.updateCache(hostname, root, access)
-
-	return access, root, err
-}
-
-// checkCache checks the txt record cache to see if we have a valid access grant and root path.
-func (handler *Handler) checkCache(hostname string) (record txtRecord, exists bool) {
-	handler.txtRecords.mu.Lock()
-	defer handler.txtRecords.mu.Unlock()
-
-	record, ok := handler.txtRecords.cache[hostname]
-	if ok && !recordIsExpired(record, handler.txtRecords.ttl) {
-		return record, true
-	}
-	return record, false
-}
-
-// recordIsExpired checks whether an entry in the txtRecord cache is expired.
-// A record is expired if its last timestamp plus the ttl was in the past.
-func recordIsExpired(record txtRecord, ttl time.Duration) bool {
-	return record.timestamp.Add(ttl).Before(time.Now())
-}
-
-// getRemoteRecord does an txt record lookup for the hostname on the dns server.
-func getRemoteRecord(hostname string) (access *uplink.Access, root string, err error) {
-	records, err := net.LookupTXT(hostname)
-	if err != nil {
-		return access, root, err
-	}
-	return parseRecords(records)
-}
-
-// parseRecords transforms the data from the hostname's external TXT records.
-// For example, a hostname may have the following TXT records: "storj_grant-1:abcd", "storj_grant-2:efgh", "storj_root:mybucket/folder".
-// parseRecords then will return serializedAccess="abcdefgh" and root="mybucket/folder".
-func parseRecords(records []string) (access *uplink.Access, root string, err error) {
-	grants := map[int]string{}
-	for _, record := range records {
-		r := strings.SplitN(record, ":", 2)
-		if strings.HasPrefix(r[0], "storj_grant") {
-			section := strings.Split(r[0], "-")
-			key, err := strconv.Atoi(section[1])
-			if err != nil {
-				return access, root, err
-			}
-			grants[key] = r[1]
-		} else if r[0] == "storj_root" {
-			root = r[1]
-		}
-	}
-
-	if root == "" {
-		return access, root, errors.New("missing root path in txt record")
-	}
-
-	var serializedAccess string
-	for i := 1; i <= len(grants); i++ {
-		if grants[i] == "" {
-			return access, root, errors.New("missing grants")
-		}
-		serializedAccess += grants[i]
-	}
-	access, err = uplink.ParseAccess(serializedAccess)
-	return access, root, err
-}
-
-// updateCache updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
-func (handler *Handler) updateCache(hostname, root string, access *uplink.Access) {
-	handler.txtRecords.mu.Lock()
-	defer handler.txtRecords.mu.Unlock()
-
-	handler.txtRecords.cache[hostname] = txtRecord{access: access, root: root, timestamp: time.Now()}
 }

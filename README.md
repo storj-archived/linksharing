@@ -70,24 +70,24 @@ The `--dns` flag will print out the info needed to create your dns records.
 
 2. Create your CNAME with our linksharing common URL (`link.tardigradeshare.io.`).
    
-    <img src="images/cname.png" width="50%">
+    <img src="docs/images/cname.png" width="50%">
 
 3. Create 3 TXT records with the following info. You will need to add the entire string (including the prefix) to your records.
    
     a. `storj_grant-1` is the first part of your access grant.
    
-    <img src="images/grant1.png" width="50%">
+    <img src="docs/images/grant1.png" width="50%">
     
     b. `storj_grant-2` is the second part of your access grant. The two parts don't need to be exactly 1/2 of the entire access grant.
      We require at least 2 strings because of txt record length restrictions. If your access grant is more than 450 characters long, you might need to split it into even more sections.
     
-    <img src="images/grant2.png" width="50%">
+    <img src="docs/images/grant2.png" width="50%">
     
     c. `storj_root` is the path of the shared object. It may be the path to a bucket, a directory, or an individual object.
    
-    <img src="images/bucket.png" width="30%">
-    <img src="images/dir.png" width="30%">
-    <img src="images/obj.png" width="30%">
+    <img src="docs/images/bucket.png" width="30%">
+    <img src="docs/images/dir.png" width="30%">
+    <img src="docs/images/obj.png" width="30%">
     
 4. That's it! You should be all set to share your files or directories with your custom domain.
 
