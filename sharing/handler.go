@@ -20,10 +20,11 @@ import (
 
 	"storj.io/common/memory"
 	"storj.io/common/ranger/httpranger"
-	"storj.io/linksharing/objectmap"
-	"storj.io/linksharing/objectranger"
 	"storj.io/uplink"
 	"storj.io/uplink/private/object"
+
+	"storj.io/linksharing/objectmap"
+	"storj.io/linksharing/objectranger"
 )
 
 var (
@@ -406,23 +407,40 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-	// e.g. http://mydomain.com/folder2/index.html with root="bucket1/folder1"
-	rootPath := strings.SplitN(root, "/", 2) // e.g. rootPath=[bucket1, folder1]
+	// e.g. http://mydomain.com/folder2/index.html with "storj_root:bucket1/folder1/"
+	rootPath := strings.SplitN(root, "/", 2) // e.g. rootPath=[bucket1, folder1/]
 	bucket := rootPath[0]
-	pt := strings.TrimPrefix(r.URL.Path, "/") // e.g. path = "folder2/index.html
+	pt := strings.TrimPrefix(r.URL.Path, "/") // e.g. pt = "folder2/index.html
 	if len(rootPath) == 2 {
-		pathPrefix := rootPath[1]  // e.g. pathPrefix = "folder1"
-		pt = pathPrefix + "/" + pt // e.g. path="folder1/folder2/index.html"
+		pathPrefix := rootPath[1] // e.g. pathPrefix = "folder1/"
+		pt = pathPrefix + pt      // e.g. "folder1/folder2/index.html"
 	}
-
-	if pt == "" {
-		pt = "index.html"
-	}
-
 	o, err := project.StatObject(ctx, bucket, pt)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "object not found") {
 		handler.handleUplinkErr(w, "stat object", err)
 		return err
+	}
+	if err != nil && strings.Contains(err.Error(), "object not found") {
+		pt2 := pt + "index.html"
+		o, err = project.StatObject(ctx, bucket, pt2)
+		if err != nil && !strings.Contains(err.Error(), "object not found") {
+			handler.handleUplinkErr(w, "stat object", err)
+			return err
+		}
+		if err != nil && strings.Contains(err.Error(), "object not found") {
+			// list objects
+			serializedAccess, err := access.Serialize()
+			if err != nil {
+				handler.log.Error("unable to handle request", zap.Error(err))
+				http.Error(w, "unable to handle request", http.StatusInternalServerError)
+			}
+			err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, pt)
+			if err != nil {
+				handler.handleUplinkErr(w, "list prefix", err)
+				return err
+			}
+			return nil
+		}
 	}
 
 	httpranger.ServeContent(ctx, w, r, pt, o.System.Created, objectranger.New(project, o, bucket))
