@@ -278,7 +278,7 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 		for i, prefix := range strings.Split(trimmed, "/") {
 			input.Breadcrumbs = append(input.Breadcrumbs, breadcrumb{
 				Prefix: prefix,
-				URL:    input.Breadcrumbs[i].URL + "/" + prefix + "/",
+				URL:    input.Breadcrumbs[i].URL + prefix + "/",
 			})
 		}
 	}
