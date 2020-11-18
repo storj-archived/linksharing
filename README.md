@@ -68,7 +68,7 @@ caching.
 1. Share your READONLY file or directory via `uplink share --readonly --dns sj://<your path>`. 
 The `--dns` flag will print out the info needed to create your dns records.
 
-2. Create your CNAME with our linksharing common URL (`link.tardigradeshare.io.`).
+2. Create your CName with our linksharing common URL (`link.tardigradeshare.io.`).
    
     <img src="docs/images/cname.png" width="50%">
 
@@ -83,12 +83,12 @@ The `--dns` flag will print out the info needed to create your dns records.
     
     <img src="docs/images/grant2.png" width="50%">
     
-    c. `storj_root` is the path of the shared object. It may be the path to a bucket, a directory, or an individual object.
+    c. `storj_root` is the path of the shared object. It may be a bucket, a subdirectory, or an individual object.
    
     <img src="docs/images/bucket.png" width="30%">
     <img src="docs/images/dir.png" width="30%">
     <img src="docs/images/obj.png" width="30%">
     
-4. That's it! You should be all set to share your files or directories with your custom domain.
+4. That's it! You should be all set to share objects with your custom domain.
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
