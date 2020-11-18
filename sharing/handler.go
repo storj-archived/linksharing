@@ -389,7 +389,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		return err
 	}
 
-	access, serializedAccess, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
+	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
@@ -423,6 +423,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 		if err != nil && errors.Is(err, uplink.ErrObjectNotFound) {
 			// list objects
+			serializedAccess, err := access.Serialize()
 			if err != nil {
 				handler.log.Error("unable to handle request", zap.Error(err))
 				http.Error(w, "unable to handle request", http.StatusInternalServerError)

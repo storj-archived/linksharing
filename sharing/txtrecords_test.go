@@ -23,11 +23,10 @@ func TestParseRecords(t *testing.T) {
 		"storj_root:linkshare/test",
 	}
 
-	access, serializedAccess, root, err := parseRecords(records)
+	access, root, err := parseRecords(records)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedAccess, access)
-	assert.Equal(t, serializedAccess, access58)
 	assert.Equal(t, "linkshare/test", root)
 }
 
@@ -45,7 +44,7 @@ func TestParseRecords_Invalid(t *testing.T) {
 	}
 
 	for _, records := range invalidRecords {
-		_, _, _, err := parseRecords(records)
+		_, _, err := parseRecords(records)
 		assert.Error(t, err, records)
 	}
 }
