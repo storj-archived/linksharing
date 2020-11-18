@@ -21,7 +21,7 @@
 
             <div class="row">
               <div class="col">
-                <h2 class="directory-heading">{{.BucketName}}</h2>
+                <h2 class="directory-heading">{{.Title}}</h2>
               </div>
             </div>
 
@@ -29,7 +29,7 @@
               <div class="col">
                 <h4 class="breadcrumbs">
                   {{range .Breadcrumbs}}
-                  <a href="/{{.URL}}">{{.Prefix}}</a>
+                  <a href="{{.URL}}">{{.Prefix}}</a>
                   <span class="separator">/</span>
                   {{end}}
                 </h4>

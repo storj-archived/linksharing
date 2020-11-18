@@ -182,7 +182,10 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return nil
 		}
-		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		err = handler.servePrefix(ctx, w, p, Breadcrumb{
+			Prefix: bucket,
+			URL:    "/" + serializedAccess + "/" + bucket + "/",
+		}, bucket, bucket, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
@@ -251,28 +254,25 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 	return nil
 }
 
-func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, serializedAccess string, bucket, prefix string) (err error) {
+type Breadcrumb struct {
+	Prefix string
+	URL    string
+}
+
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root Breadcrumb, title, bucket, prefix string) (err error) {
 	type Object struct {
 		Key    string
 		Size   string
 		Prefix bool
 	}
 
-	type Breadcrumb struct {
-		Prefix string
-		URL    string
-	}
-
 	var input struct {
-		BucketName  string
+		Title       string
 		Breadcrumbs []Breadcrumb
 		Objects     []Object
 	}
-	input.BucketName = bucket
-	input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
-		Prefix: bucket,
-		URL:    serializedAccess + "/" + bucket + "/",
-	})
+	input.Title = title
+	input.Breadcrumbs = append(input.Breadcrumbs, root)
 	if prefix != "" {
 		trimmed := strings.TrimRight(prefix, "/")
 		for i, prefix := range strings.Split(trimmed, "/") {
@@ -449,26 +449,21 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 
 	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
 	o, err := project.StatObject(ctx, bucket, key)
-
-	if err != nil && !errors.Is(err, uplink.ErrObjectNotFound) {
-		handler.handleUplinkErr(w, "stat object", err)
-		return err
-	}
-	if err != nil && errors.Is(err, uplink.ErrObjectNotFound) {
-		k := key + "index.html" // todo update to path.Join() and make sure the slashes are in the right places
-		o, err = project.StatObject(ctx, bucket, k)
-		if err != nil && !errors.Is(err, uplink.ErrObjectNotFound) {
+	if err != nil {
+		if !strings.HasSuffix(key, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
 			handler.handleUplinkErr(w, "stat object", err)
 			return err
 		}
-		if err != nil && errors.Is(err, uplink.ErrObjectNotFound) {
-			// list objects
-			serializedAccess, err := access.Serialize()
-			if err != nil {
-				handler.log.Error("unable to handle request", zap.Error(err))
-				http.Error(w, "unable to handle request", http.StatusInternalServerError)
+
+		k := key + "index.html"
+		o, err = project.StatObject(ctx, bucket, k)
+		if err != nil {
+			if !errors.Is(err, uplink.ErrObjectNotFound) {
+				handler.handleUplinkErr(w, "stat object", err)
+				return err
 			}
-			err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, key)
+
+			err = handler.servePrefix(ctx, w, project, Breadcrumb{Prefix: host, URL: "/"}, host, bucket, key)
 			if err != nil {
 				handler.handleUplinkErr(w, "list prefix", err)
 				return err
@@ -487,11 +482,11 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 // Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1/,
 // we get an object key of prefix1/prefix2/index.html
 func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
-	rootPath := strings.SplitN(root, "/", 2)
-	key = strings.TrimPrefix(urlPath, "/")
-	if len(rootPath) == 2 {
-		pathPrefix := rootPath[1]
-		key = pathPrefix + key // todo update to path.Join() and make sure the slashes are in the right places
+	parts := strings.SplitN(root, "/", 2)
+	bucket = parts[0]
+	prefix := ""
+	if len(parts) > 1 {
+		prefix = parts[1]
 	}
-	return rootPath[0], key
+	return bucket, prefix + urlPath
 }
