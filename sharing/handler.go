@@ -45,6 +45,9 @@ type Config struct {
 	// AuthServiceConfig contains configuration required to use the auth service to resolve
 	// access key ids into access grants.
 	AuthServiceConfig AuthServiceConfig
+
+	// DNS Server address, for TXT record lookup
+	DNSServer string
 }
 
 // Location represents geographical points
@@ -68,6 +71,11 @@ type Handler struct {
 
 // NewHandler creates a new link sharing HTTP handler.
 func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handler, error) {
+	dns, err := NewDNSClient(config.DNSServer)
+	if err != nil {
+		return nil, err
+	}
+
 	urlBase, err := parseURLBase(config.URLBase)
 	if err != nil {
 		return nil, err
@@ -86,7 +94,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		urlBase:    urlBase,
 		templates:  templates,
 		mapper:     mapper,
-		txtRecords: newTxtRecords(config.TxtRecordTTL),
+		txtRecords: newTxtRecords(config.TxtRecordTTL, dns),
 		authConfig: config.AuthServiceConfig,
 	}, nil
 }

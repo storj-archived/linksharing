@@ -33,6 +33,7 @@ type LinkSharing struct {
 	TxtRecordTTL       time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
 	AuthServiceBaseURL string        `user:"true" help:"base url to use for resolving access key ids" default:""`
 	AuthServiceToken   string        `user:"true" help:"auth token for giving access to the auth service" default:""`
+	DNSServer          string        `user:"true" help:"dns server address to use for TXT resolution" default:"1.1.1.1:53"`
 }
 
 var (
@@ -94,6 +95,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 				BaseURL: runCfg.AuthServiceBaseURL,
 				Token:   runCfg.AuthServiceToken,
 			},
+			DNSServer: runCfg.DNSServer,
 		},
 	})
 	if err != nil {
