@@ -23,9 +23,10 @@ type txtRecords struct {
 }
 
 type txtRecord struct {
-	access    *uplink.Access
-	root      string
-	timestamp time.Time
+	access           *uplink.Access
+	serializedAccess string
+	root             string
+	timestamp        time.Time
 }
 
 func newTxtRecords(ttl time.Duration) *txtRecords {
@@ -33,19 +34,19 @@ func newTxtRecords(ttl time.Duration) *txtRecords {
 }
 
 // fetchAccessForHost fetches the root and access grant from the cache or dns server when applicable.
-func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string) (access *uplink.Access, root string, err error) {
+func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string) (access *uplink.Access, serializedAccess, root string, err error) {
 	record, exists := records.fromCache(hostname)
 	if exists {
-		return record.access, record.root, nil
+		return record.access, record.serializedAccess, record.root, nil
 	}
 
-	access, root, err = queryAccessFromDNS(ctx, hostname)
+	access, serializedAccess, root, err = queryAccessFromDNS(ctx, hostname)
 	if err != nil {
-		return access, root, err
+		return access, serializedAccess, root, err
 	}
 	records.updateCache(hostname, root, access)
 
-	return access, root, err
+	return access, serializedAccess, root, err
 }
 
 // fromCache checks the txt record cache to see if we have a valid access grant and root path.
@@ -75,10 +76,10 @@ func (records *txtRecords) updateCache(hostname, root string, access *uplink.Acc
 }
 
 // queryAccessFromDNS does an txt record lookup for the hostname on the dns server.
-func queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Access, root string, err error) {
+func queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Access, serializedAccess, root string, err error) {
 	records, err := net.DefaultResolver.LookupTXT(ctx, hostname)
 	if err != nil {
-		return access, root, err
+		return access, serializedAccess, root, err
 	}
 	return parseRecords(records)
 }
@@ -86,7 +87,7 @@ func queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Ac
 // parseRecords transforms the data from the hostname's external TXT records.
 // For example, a hostname may have the following TXT records: "storj_grant-1:abcd", "storj_grant-2:efgh", "storj_root:mybucket/folder".
 // parseRecords then will return serializedAccess="abcdefgh" and root="mybucket/folder".
-func parseRecords(records []string) (access *uplink.Access, root string, err error) {
+func parseRecords(records []string) (access *uplink.Access, serializedAccess, root string, err error) {
 	grants := map[int]string{}
 	for _, record := range records {
 		r := strings.SplitN(record, ":", 2)
@@ -94,7 +95,7 @@ func parseRecords(records []string) (access *uplink.Access, root string, err err
 			section := strings.Split(r[0], "-")
 			key, err := strconv.Atoi(section[1])
 			if err != nil {
-				return access, root, err
+				return access, serializedAccess, root, err
 			}
 			grants[key] = r[1]
 		} else if r[0] == "storj_root" {
@@ -103,16 +104,15 @@ func parseRecords(records []string) (access *uplink.Access, root string, err err
 	}
 
 	if root == "" {
-		return access, root, errors.New("missing root path in txt record")
+		return access, serializedAccess, root, errors.New("missing root path in txt record")
 	}
 
-	var serializedAccess string
 	for i := 1; i <= len(grants); i++ {
 		if grants[i] == "" {
-			return access, root, errors.New("missing grants")
+			return access, serializedAccess, root, errors.New("missing grants")
 		}
 		serializedAccess += grants[i]
 	}
 	access, err = uplink.ParseAccess(serializedAccess)
-	return access, root, err
+	return access, serializedAccess, root, err
 }

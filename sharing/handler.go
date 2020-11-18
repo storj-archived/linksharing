@@ -389,7 +389,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		return err
 	}
 
-	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
+	access, serializedAccess, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
 	if err != nil {
 		handler.log.Error("unable to handle request", zap.Error(err))
 		http.Error(w, "unable to handle request", http.StatusInternalServerError)
@@ -407,7 +407,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-	bucket, path  :=determineBucketAndPath(root, r.URL.Path)
+	bucket, path := determineBucketAndPath(root, r.URL.Path)
 	o, err := project.StatObject(ctx, bucket, path)
 
 	if err != nil && !errors.Is(err, uplink.ErrObjectNotFound) {
@@ -423,7 +423,6 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 		if err != nil && errors.Is(err, uplink.ErrObjectNotFound) {
 			// list objects
-			serializedAccess, err := access.Serialize()
 			if err != nil {
 				handler.log.Error("unable to handle request", zap.Error(err))
 				http.Error(w, "unable to handle request", http.StatusInternalServerError)
@@ -446,7 +445,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 // The root path will be [bucket1, folder1/]. Our bucket is named bucket1.
 // Since the url has a path of /folder2/index.html and the second half of the root path is folder1/,
 // we get an object path of folder1/folder2/index.html
-func determineBucketAndPath(root, urlPath string)(bucket, path string) {
+func determineBucketAndPath(root, urlPath string) (bucket, path string) {
 	rootPath := strings.SplitN(root, "/", 2)
 	path = strings.TrimPrefix(urlPath, "/")
 	if len(rootPath) == 2 {
