@@ -135,7 +135,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "GET",
 			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: invalid access grant format\n",
+			body:   "invalid request: invalid access\n",
 		},
 		{
 			name:   "GET missing bucket",
@@ -190,7 +190,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			method: "HEAD",
 			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
-			body:   "invalid request: uplink: invalid access grant format\n",
+			body:   "invalid request: invalid access\n",
 		},
 		{
 			name:   "HEAD missing bucket",

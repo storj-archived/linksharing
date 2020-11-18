@@ -38,11 +38,13 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 		Log: log,
 	}
 
-	reader, err := maxminddb.Open(config.Server.GeoLocationDB)
-	if err != nil {
-		return nil, errs.New("unable to open geo location db: %w", err)
+	if config.Server.GeoLocationDB != "" {
+		reader, err := maxminddb.Open(config.Server.GeoLocationDB)
+		if err != nil {
+			return nil, errs.New("unable to open geo location db: %w", err)
+		}
+		peer.Mapper = objectmap.NewIPDB(reader)
 	}
-	peer.Mapper = objectmap.NewIPDB(reader)
 
 	handle, err := sharing.NewHandler(log, peer.Mapper, config.Handler)
 	if err != nil {
