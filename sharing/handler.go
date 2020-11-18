@@ -407,16 +407,16 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-	bucket, path := determineBucketAndPath(root, r.URL.Path)
-	o, err := project.StatObject(ctx, bucket, path)
+	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
+	o, err := project.StatObject(ctx, bucket, key)
 
 	if err != nil && !errors.Is(err, uplink.ErrObjectNotFound) {
 		handler.handleUplinkErr(w, "stat object", err)
 		return err
 	}
 	if err != nil && errors.Is(err, uplink.ErrObjectNotFound) {
-		pt := path + "index.html"
-		o, err = project.StatObject(ctx, bucket, pt)
+		k := key + "index.html" // todo update to path.Join() and make sure the slashes are in the right places
+		o, err = project.StatObject(ctx, bucket, k)
 		if err != nil && !errors.Is(err, uplink.ErrObjectNotFound) {
 			handler.handleUplinkErr(w, "stat object", err)
 			return err
@@ -427,7 +427,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 				handler.log.Error("unable to handle request", zap.Error(err))
 				http.Error(w, "unable to handle request", http.StatusInternalServerError)
 			}
-			err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, path)
+			err = handler.servePrefix(ctx, w, project, serializedAccess, bucket, key)
 			if err != nil {
 				handler.handleUplinkErr(w, "list prefix", err)
 				return err
@@ -436,21 +436,21 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}
 
-	httpranger.ServeContent(ctx, w, r, path, o.System.Created, objectranger.New(project, o, bucket))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(project, o, bucket))
 	return nil
 }
 
-// determineBucketAndPath is a helper function to parse storj_root and the url into the bucket and path
-// For example, we have http://mydomain.com/folder2/index.html with storj_root:bucket1/folder1/
-// The root path will be [bucket1, folder1/]. Our bucket is named bucket1.
-// Since the url has a path of /folder2/index.html and the second half of the root path is folder1/,
-// we get an object path of folder1/folder2/index.html
-func determineBucketAndPath(root, urlPath string) (bucket, path string) {
+// determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key
+// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1/
+// The root path will be [bucket1, prefix1/]. Our bucket is named bucket1.
+// Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1/,
+// we get an object key of prefix1/prefix2/index.html
+func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
 	rootPath := strings.SplitN(root, "/", 2)
-	path = strings.TrimPrefix(urlPath, "/")
+	key = strings.TrimPrefix(urlPath, "/")
 	if len(rootPath) == 2 {
 		pathPrefix := rootPath[1]
-		path = pathPrefix + path
+		key = pathPrefix + key // todo update to path.Join() and make sure the slashes are in the right places
 	}
-	return rootPath[0], path
+	return rootPath[0], key
 }
