@@ -185,7 +185,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 		err = handler.servePrefix(ctx, w, p, breadcrumb{
 			Prefix: bucket,
 			URL:    "/" + serializedAccess + "/" + bucket + "/",
-		}, bucket, bucket, key)
+		}, bucket, bucket, key, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
@@ -259,7 +259,7 @@ type breadcrumb struct {
 	URL    string
 }
 
-func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root breadcrumb, title, bucket, prefix string) (err error) {
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root breadcrumb, title, bucket, realPrefix, visiblePrefix string) (err error) {
 	type Object struct {
 		Key    string
 		Size   string
@@ -273,8 +273,8 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	}
 	input.Title = title
 	input.Breadcrumbs = append(input.Breadcrumbs, root)
-	if prefix != "" {
-		trimmed := strings.TrimRight(prefix, "/")
+	if visiblePrefix != "" {
+		trimmed := strings.TrimRight(visiblePrefix, "/")
 		for i, prefix := range strings.Split(trimmed, "/") {
 			input.Breadcrumbs = append(input.Breadcrumbs, breadcrumb{
 				Prefix: prefix,
@@ -286,14 +286,14 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	input.Objects = make([]Object, 0)
 
 	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
-		Prefix: prefix,
+		Prefix: realPrefix,
 		System: true,
 	})
 
 	// TODO add paging
 	for objects.Next() {
 		item := objects.Item()
-		key := item.Key[len(prefix):]
+		key := item.Key[len(realPrefix):]
 		input.Objects = append(input.Objects, Object{
 			Key:    key,
 			Size:   memory.Size(item.System.ContentLength).Base10String(),
@@ -463,7 +463,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 				return err
 			}
 
-			err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key)
+			err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
 			if err != nil {
 				handler.handleUplinkErr(w, "list prefix", err)
 				return err
