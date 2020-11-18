@@ -3,7 +3,7 @@ module storj.io/linksharing
 go 1.13
 
 require (
-	github.com/btcsuite/btcutil v1.0.2 // indirect
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/calebcase/tmpfile v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.7.0
