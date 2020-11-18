@@ -44,7 +44,7 @@ func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname stri
 	if err != nil {
 		return access, serializedAccess, root, err
 	}
-	records.updateCache(hostname, root, access)
+	records.updateCache(hostname, root, serializedAccess, access)
 
 	return access, serializedAccess, root, err
 }
@@ -68,11 +68,11 @@ func recordIsExpired(record txtRecord, ttl time.Duration) bool {
 }
 
 // updateCache updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
-func (records *txtRecords) updateCache(hostname, root string, access *uplink.Access) {
+func (records *txtRecords) updateCache(hostname, root, serializedAccess string, access *uplink.Access) {
 	records.mu.Lock()
 	defer records.mu.Unlock()
 
-	records.cache[hostname] = txtRecord{access: access, root: root, timestamp: time.Now()}
+	records.cache[hostname] = txtRecord{access: access, serializedAccess: serializedAccess, root: root, timestamp: time.Now()}
 }
 
 // queryAccessFromDNS does an txt record lookup for the hostname on the dns server.
