@@ -476,11 +476,11 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	return nil
 }
 
-// determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key
-// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1/
-// The root path will be [bucket1, prefix1/]. Our bucket is named bucket1.
-// Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1/,
-// we get an object key of prefix1/prefix2/index.html
+// determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.
+// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1
+// The root path will be [bucket1, prefix1]. Our bucket is named bucket1.
+// Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1,
+// we get an object key of prefix1/prefix2/index.html.
 func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
 	parts := strings.SplitN(root, "/", 2)
 	bucket = parts[0]
