@@ -182,7 +182,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return nil
 		}
-		err = handler.servePrefix(ctx, w, p, Breadcrumb{
+		err = handler.servePrefix(ctx, w, p, breadcrumb{
 			Prefix: bucket,
 			URL:    "/" + serializedAccess + "/" + bucket + "/",
 		}, bucket, bucket, key)
@@ -254,12 +254,12 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 	return nil
 }
 
-type Breadcrumb struct {
+type breadcrumb struct {
 	Prefix string
 	URL    string
 }
 
-func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root Breadcrumb, title, bucket, prefix string) (err error) {
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root breadcrumb, title, bucket, prefix string) (err error) {
 	type Object struct {
 		Key    string
 		Size   string
@@ -268,7 +268,7 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 
 	var input struct {
 		Title       string
-		Breadcrumbs []Breadcrumb
+		Breadcrumbs []breadcrumb
 		Objects     []Object
 	}
 	input.Title = title
@@ -276,7 +276,7 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	if prefix != "" {
 		trimmed := strings.TrimRight(prefix, "/")
 		for i, prefix := range strings.Split(trimmed, "/") {
-			input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+			input.Breadcrumbs = append(input.Breadcrumbs, breadcrumb{
 				Prefix: prefix,
 				URL:    input.Breadcrumbs[i].URL + "/" + prefix + "/",
 			})
@@ -463,7 +463,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 				return err
 			}
 
-			err = handler.servePrefix(ctx, w, project, Breadcrumb{Prefix: host, URL: "/"}, host, bucket, key)
+			err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key)
 			if err != nil {
 				handler.handleUplinkErr(w, "list prefix", err)
 				return err
