@@ -182,7 +182,10 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return nil
 		}
-		err = handler.servePrefix(ctx, w, p, serializedAccess, bucket, key)
+		err = handler.servePrefix(ctx, w, p, breadcrumb{
+			Prefix: bucket,
+			URL:    "/" + serializedAccess + "/" + bucket + "/",
+		}, bucket, bucket, key, key)
 		if err != nil {
 			handler.handleUplinkErr(w, "list prefix", err)
 		}
@@ -251,32 +254,29 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 	return nil
 }
 
-func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, serializedAccess string, bucket, prefix string) (err error) {
+type breadcrumb struct {
+	Prefix string
+	URL    string
+}
+
+func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, project *uplink.Project, root breadcrumb, title, bucket, realPrefix, visiblePrefix string) (err error) {
 	type Object struct {
 		Key    string
 		Size   string
 		Prefix bool
 	}
 
-	type Breadcrumb struct {
-		Prefix string
-		URL    string
-	}
-
 	var input struct {
-		BucketName  string
-		Breadcrumbs []Breadcrumb
+		Title       string
+		Breadcrumbs []breadcrumb
 		Objects     []Object
 	}
-	input.BucketName = bucket
-	input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
-		Prefix: bucket,
-		URL:    serializedAccess + "/" + bucket + "/",
-	})
-	if prefix != "" {
-		trimmed := strings.TrimRight(prefix, "/")
+	input.Title = title
+	input.Breadcrumbs = append(input.Breadcrumbs, root)
+	if visiblePrefix != "" {
+		trimmed := strings.TrimRight(visiblePrefix, "/")
 		for i, prefix := range strings.Split(trimmed, "/") {
-			input.Breadcrumbs = append(input.Breadcrumbs, Breadcrumb{
+			input.Breadcrumbs = append(input.Breadcrumbs, breadcrumb{
 				Prefix: prefix,
 				URL:    input.Breadcrumbs[i].URL + "/" + prefix + "/",
 			})
@@ -286,14 +286,14 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 	input.Objects = make([]Object, 0)
 
 	objects := project.ListObjects(ctx, bucket, &uplink.ListObjectsOptions{
-		Prefix: prefix,
+		Prefix: realPrefix,
 		System: true,
 	})
 
 	// TODO add paging
 	for objects.Next() {
 		item := objects.Item()
-		key := item.Key[len(prefix):]
+		key := item.Key[len(realPrefix):]
 		input.Objects = append(input.Objects, Object{
 			Key:    key,
 			Size:   memory.Size(item.System.ContentLength).Base10String(),
@@ -447,25 +447,46 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
-	// e.g. http://mydomain.com/folder2/index.html with root="bucket1/folder1"
-	rootPath := strings.SplitN(root, "/", 2) // e.g. rootPath=[bucket1, folder1]
-	bucket := rootPath[0]
-	pt := strings.TrimPrefix(r.URL.Path, "/") // e.g. path = "folder2/index.html
-	if len(rootPath) == 2 {
-		pathPrefix := rootPath[1]  // e.g. pathPrefix = "folder1"
-		pt = pathPrefix + "/" + pt // e.g. path="folder1/folder2/index.html"
-	}
-
-	if pt == "" {
-		pt = "index.html"
-	}
-
-	o, err := project.StatObject(ctx, bucket, pt)
+	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
+	o, err := project.StatObject(ctx, bucket, key)
 	if err != nil {
-		handler.handleUplinkErr(w, "stat object", err)
-		return err
+		if !strings.HasSuffix(key, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
+			handler.handleUplinkErr(w, "stat object", err)
+			return err
+		}
+
+		k := key + "index.html"
+		o, err = project.StatObject(ctx, bucket, k)
+		if err != nil {
+			if !errors.Is(err, uplink.ErrObjectNotFound) {
+				handler.handleUplinkErr(w, "stat object", err)
+				return err
+			}
+
+			err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
+			if err != nil {
+				handler.handleUplinkErr(w, "list prefix", err)
+				return err
+			}
+			return nil
+		}
 	}
 
-	httpranger.ServeContent(ctx, w, r, pt, o.System.Created, objectranger.New(project, o, bucket))
+	httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(project, o, bucket))
 	return nil
+}
+
+// determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.
+// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1
+// The root path will be [bucket1, prefix1]. Our bucket is named bucket1.
+// Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1,
+// we get an object key of prefix1/prefix2/index.html.
+func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
+	parts := strings.SplitN(root, "/", 2)
+	bucket = parts[0]
+	prefix := ""
+	if len(parts) > 1 {
+		prefix = parts[1]
+	}
+	return bucket, prefix + urlPath
 }
