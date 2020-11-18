@@ -94,7 +94,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		urlBase:    urlBase,
 		templates:  templates,
 		mapper:     mapper,
-		txtRecords: newTxtRecords(config.TxtRecordTTL, dns),
+		txtRecords: newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
 		authConfig: config.AuthServiceConfig,
 	}, nil
 }
@@ -327,6 +327,29 @@ func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, er
 	}
 }
 
+const versionAccessKeyID = 1 // we don't want to import stargate just for this
+
+func parseAccess(access string, cfg AuthServiceConfig) (*uplink.Access, error) {
+	// check if the serializedAccess is actually an access key id
+	if _, version, err := base58.CheckDecode(access); err != nil {
+		return nil, errs.New("invalid access")
+	} else if version == versionAccessKeyID {
+		authResp, err := cfg.Resolve(access)
+		if err != nil {
+			return nil, err
+		}
+		if !authResp.Public {
+			return nil, errs.New("non-public access key id")
+		}
+		access = authResp.AccessGrant
+	} else if version == 0 { // 0 could be any number of things, but we just assume an access
+	} else {
+		return nil, errs.New("invalid access version")
+	}
+
+	return uplink.ParseAccess(access)
+}
+
 func parseRequestPath(p string, cfg AuthServiceConfig) (rawRequest bool, _ *uplink.Access, serializedAccess, bucket, key string, err error) {
 	// Drop the leading slash, if necessary.
 	p = strings.TrimPrefix(p, "/")
@@ -354,30 +377,13 @@ func parseRequestPath(p string, cfg AuthServiceConfig) (rawRequest bool, _ *upli
 
 	serializedAccess = segments[0]
 
-	// check if the serializedAccess is actually an access key id
-	if _, version, err := base58.CheckDecode(serializedAccess); err != nil {
-		return rawRequest, nil, "", "", "", errs.New("invalid access")
-	} else if version == 1 { // VersionAccessKeyID = 1. don't want to import stargate for this
-		authResp, err := cfg.Resolve(serializedAccess)
-		if err != nil {
-			return rawRequest, nil, "", "", "", err
-		}
-		if !authResp.Public {
-			return rawRequest, nil, "", "", "", errs.New("non-public access key id")
-		}
-		serializedAccess = authResp.AccessGrant
-	} else if version == 0 { // 0 could be any number of things, but we just assume an access
-	} else {
-		return rawRequest, nil, "", "", "", errs.New("invalid access version")
-	}
-
 	bucket = segments[1]
 
 	if len(segments) == 3 {
 		key = segments[2]
 	}
 
-	access, err := uplink.ParseAccess(serializedAccess)
+	access, err := parseAccess(serializedAccess, cfg)
 	if err != nil {
 		return rawRequest, nil, "", "", "", err
 	}

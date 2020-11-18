@@ -16,6 +16,7 @@ import (
 type txtRecords struct {
 	maxTTL time.Duration
 	dns    *DNSClient
+	auth   AuthServiceConfig
 
 	mu    sync.RWMutex
 	cache map[string]txtRecord
@@ -34,8 +35,12 @@ type txtRecord struct {
 	expiration time.Time
 }
 
-func newTxtRecords(maxTTL time.Duration, dns *DNSClient) *txtRecords {
-	return &txtRecords{maxTTL: maxTTL, dns: dns, cache: make(map[string]txtRecord)}
+func newTxtRecords(maxTTL time.Duration, dns *DNSClient, auth AuthServiceConfig) *txtRecords {
+	return &txtRecords{
+		maxTTL: maxTTL,
+		dns:    dns,
+		auth:   auth,
+		cache:  make(map[string]txtRecord)}
 }
 
 // fetchAccessForHost fetches the root and access grant from the cache or dns server when applicable.
@@ -93,7 +98,7 @@ func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname stri
 		root = set.Lookup("storj-path")
 	}
 
-	access, err = uplink.ParseAccess(serializedAccess)
+	access, err = parseAccess(serializedAccess, records.auth)
 	if err != nil {
 		return nil, "", 0, err
 	}
