@@ -30,7 +30,7 @@ type LinkSharing struct {
 	KeyFile            string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
 	PublicURL          string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 	GeoLocationDB      string        `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
-	TxtRecordTTL       time.Duration `user:"true" help:"ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"120s"`
+	TxtRecordTTL       time.Duration `user:"true" help:"max ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"1h"`
 	AuthServiceBaseURL string        `user:"true" help:"base url to use for resolving access key ids" default:""`
 	AuthServiceToken   string        `user:"true" help:"auth token for giving access to the auth service" default:""`
 	DNSServer          string        `user:"true" help:"dns server address to use for TXT resolution" default:"1.1.1.1:53"`
