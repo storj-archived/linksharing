@@ -448,39 +448,49 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	}()
 
 	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
-	o, err := project.StatObject(ctx, bucket, key)
-	if err != nil {
+	if key != "" { // there are no objects with the empty key
+		o, err := project.StatObject(ctx, bucket, key)
+		if err == nil {
+			// the requested key exists
+			httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(project, o, bucket))
+			return nil
+		}
 		if !strings.HasSuffix(key, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
+			// the requested key does not end in a slash, or there was an unknown error
 			handler.handleUplinkErr(w, "stat object", err)
 			return err
 		}
-
-		k := key + "index.html"
-		o, err = project.StatObject(ctx, bucket, k)
-		if err != nil {
-			if !errors.Is(err, uplink.ErrObjectNotFound) {
-				handler.handleUplinkErr(w, "stat object", err)
-				return err
-			}
-
-			err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
-			if err != nil {
-				handler.handleUplinkErr(w, "list prefix", err)
-				return err
-			}
-			return nil
-		}
 	}
 
-	httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(project, o, bucket))
+	// due to the above logic, by this point, the key is either exactly "" or ends in a "/"
+
+	k := key + "index.html"
+	o, err := project.StatObject(ctx, bucket, k)
+	if err == nil {
+		httpranger.ServeContent(ctx, w, r, k, o.System.Created, objectranger.New(project, o, bucket))
+		return nil
+	}
+	if !errors.Is(err, uplink.ErrObjectNotFound) {
+		handler.handleUplinkErr(w, "stat object", err)
+		return err
+	}
+
+	err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
+	if err != nil {
+		handler.handleUplinkErr(w, "list prefix", err)
+		return err
+	}
 	return nil
 }
 
 // determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.
-// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1
-// The root path will be [bucket1, prefix1]. Our bucket is named bucket1.
+// For example, we have http://mydomain.com/prefix2/index.html with storj_root:bucket1/prefix1/
+// The root path will be [bucket1, prefix1/]. Our bucket is named bucket1.
 // Since the url has a path of /prefix2/index.html and the second half of the root path is prefix1,
-// we get an object key of prefix1/prefix2/index.html.
+// we get an object key of prefix1/prefix2/index.html. To make this work, the first (and only the
+// first) prefix slash from the URL is stripped. Additionally, to aid security, if there is a non-empty
+// prefix, it will have a suffix slash added to it if no trailing slash exists. See
+// TestDetermineBucketAndObjectKey for many examples.
 func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
 	parts := strings.SplitN(root, "/", 2)
 	bucket = parts[0]
@@ -488,5 +498,8 @@ func determineBucketAndObjectKey(root, urlPath string) (bucket, key string) {
 	if len(parts) > 1 {
 		prefix = parts[1]
 	}
-	return bucket, prefix + urlPath
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	return bucket, prefix + strings.TrimPrefix(urlPath, "/")
 }

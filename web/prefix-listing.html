@@ -36,14 +36,16 @@
               </div>
             </div>
 
-            <a class="directory-link" href="../">
-              <div class="row">
-                <div class="col">
-                  <img src="/static/img/back.svg" alt="Back">
-                  <span class="directory-name">Back</span>
+            {{if (gt (len .Breadcrumbs) 1)}}
+              <a class="directory-link" href="../">
+                <div class="row">
+                  <div class="col">
+                    <img src="/static/img/back.svg" alt="Back">
+                    <span class="directory-name">Back</span>
+                  </div>
                 </div>
-              </div>
-            </a>
+              </a>
+            {{end}}
 
             {{range .Objects}}
               {{if .Prefix}}
