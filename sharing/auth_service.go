@@ -38,7 +38,7 @@ func (a AuthServiceConfig) Resolve(accessKeyID string) (_ *AuthServiceResponse, 
 		return nil, AuthServiceError.Wrap(err)
 	}
 
-	reqURL.Path = path.Join(reqURL.Path, accessKeyID)
+	reqURL.Path = path.Join(reqURL.Path, "/v1/access", accessKeyID)
 	req, err := http.NewRequest("GET", reqURL.String(), nil)
 	if err != nil {
 		return nil, AuthServiceError.Wrap(err)
