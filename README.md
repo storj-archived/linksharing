@@ -104,6 +104,6 @@ Type TXT, Hostname txt-yourHostName, Content storj-access:3WXG1qE
     
 5. Without further action, your site will be served with http. You can secure your site by using a https proxy server such as [Cloudflare](https://www.cloudflare.com/)
 
-6. That's it! You should be all set to access your website e.g. `http://yourHostName.yourwebsite.com`
+6. That's it! You should be all set to access your website e.g. `http://yourHostName.examplesite.test`
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
