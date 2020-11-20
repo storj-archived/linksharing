@@ -59,51 +59,67 @@ After configuration is complete, running the link sharing is as simple as:
 $ linksharing run
 ```
 
-## Custom URL configuration and static site hosting
+## Standard Linksharing with Uplink
+Anything shared with `--url` will be readonly and available publicly (no secret key needed).
 
-You can use your own domain and host your website on tardigrade with the following setup.
+`uplink share --url sj://<path>`
 
-0. Upload your static site and other files to tardigrade using [Uplink](https://github.com/storj/storj/wiki/Uplink-CLI) 
-or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://github.com/storj/storj/wiki/Uplink-CLI).
+results in
 
-1. Share your READONLY objects via `uplink share --readonly --dns <hostname> sj://<bucket/prefix>`.
+`https://link.tardigradeshare.io/jqaz8xihdea93jfbaks8324jrhq1/<path>`
 
-This command will provide the info needed to create your 3 dns records.
+## Custom URL configuration and static site hosting with Uplink
 
-For example `uplink share --dns yourHostName sj://bucket/prefix` will output:
+You can use your own domain and host your website on Tardigrade with the following setup.
+
+0. Upload your static site and other files to tardigrade using [Uplink](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli) 
+or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli). 
+   
+
+1. Share an object or path to an object. 
+   If you are sharing an entire bucket or sub-folder, you will want to name your home page index.html.
+   Anything shared with `--dns` will be readonly and available publicly (no secret key needed).
+
+`uplink share --dns <hostname> sj://<path>`
+
+Prints a zone file with the information needed to create 3 dns records. Remember to update the $ORIGIN with your domain name. You may also change the $TTL.
 
 ```
-Type CNAME, Hostname yourHostName, Target link.tardigradeshare.io.
-------
-Type TXT, Hostname txt-yourHostName, Content storj-root:bucket/prefix
-------
-Type TXT, Hostname txt-yourHostName, Content storj-access:3WXG1qE
+$ORIGIN example.com.
+$TTL    3600
+<hostname>    	IN	CNAME	link.tardigradeshare.io.
+txt-<hostname> 	IN	TXT  	storj-root:<path>
+txt-<hostname> 	IN	TXT  	storj-access:<access key>
+```
+
+
+For example `uplink share --dns www sj://bucket/prefix` will output:
+```
+$ORIGIN example.com.
+$TTL    3600
+www    	IN	CNAME	link.tardigradeshare.io.
+txt-www	IN	TXT  	storj-root:bucket/prefix
+txt-www	IN	TXT  	storj-access:jqaz8xihdea93jfbaks8324jrhq1
 ```
 
 2. Create a CNAME record on your hostname using our linksharing common URL `link.tardigradeshare.io.` as the target name.
-   
-    `Type CNAME, Hostname yourHostName, Target link.tardigradeshare.io.`
-    
+ 
     <img src="docs/images/cname.png" width="50%">
 
 3. Create 2 TXT records, prepending `txt-` to your hostname.
     
     a. Root Path: the bucket, object prefix key, or individual object that you want your root domain to resolve to.
-   
-    `Type TXT, Hostname txt-yourHostName, Content storj-root:bucket/prefix`
     
     <img src="docs/images/root.png" width="50%">
     
     b. Access Key: the readonly and public access key to your root path.
-    
-    `Type TXT, Hostname txt-yourHostName, Content storj-access:3WXG1qE`
-    
+ 
     <img src="docs/images/access.png" width="50%">
 
-4. You can check to make sure your dns records are ready with `dig @1.1.1.1 txt-<yourHostName>.<yourDomain> TXT`        
+4. You can check to make sure your dns records are ready with `dig @1.1.1.1 txt-<hostname>.<domain> TXT`        
     
 5. Without further action, your site will be served with http. You can secure your site by using a https proxy server such as [Cloudflare](https://www.cloudflare.com/)
 
-6. That's it! You should be all set to access your website e.g. `http://yourHostName.yourwebsite.com`
+6. That's it! You should be all set to access your website e.g. `http://www.example.test`
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
