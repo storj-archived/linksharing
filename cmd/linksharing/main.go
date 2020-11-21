@@ -23,17 +23,20 @@ import (
 
 // LinkSharing defines link sharing configuration.
 type LinkSharing struct {
-	Address            string        `user:"true" help:"public address to listen on" default:":8080"`
-	AddressTLS         string        `user:"true" help:"public tls address to listen on" default:":8443"`
-	LetsEncrypt        bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
-	CertFile           string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
-	KeyFile            string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL          string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
-	GeoLocationDB      string        `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
-	TxtRecordTTL       time.Duration `user:"true" help:"max ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"1h"`
-	AuthServiceBaseURL string        `user:"true" help:"base url to use for resolving access key ids" default:""`
-	AuthServiceToken   string        `user:"true" help:"auth token for giving access to the auth service" default:""`
-	DNSServer          string        `user:"true" help:"dns server address to use for TXT resolution" default:"1.1.1.1:53"`
+	Address               string        `user:"true" help:"public address to listen on" default:":8080"`
+	AddressTLS            string        `user:"true" help:"public tls address to listen on" default:":8443"`
+	LetsEncrypt           bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
+	CertFile              string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
+	KeyFile               string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
+	PublicURL             string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	GeoLocationDB         string        `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
+	TxtRecordTTL          time.Duration `user:"true" help:"max ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"1h"`
+	AuthServiceBaseURL    string        `user:"true" help:"base url to use for resolving access key ids" default:""`
+	AuthServiceToken      string        `user:"true" help:"auth token for giving access to the auth service" default:""`
+	DNSServer             string        `user:"true" help:"dns server address to use for TXT resolution" default:"1.1.1.1:53"`
+	StaticSourcesPath     string        `user:"true" help:"the path to where web assets are located" default:"./web/static"`
+	Templates             string        `user:"true" help:"the path to where renderable templates are located" default:"./web"`
+	LandingRedirectTarget string        `user:"true" help:"the url to redirect empty requests to" default:"https://tardigrade.io/"`
 }
 
 var (
@@ -86,17 +89,20 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 				ConfigDir:   confDir,
 			},
 			ShutdownTimeout: -1,
-			GeoLocationDB:   runCfg.GeoLocationDB,
 		},
 		Handler: sharing.Config{
-			URLBase:      runCfg.PublicURL,
-			TxtRecordTTL: runCfg.TxtRecordTTL,
+			URLBase:               runCfg.PublicURL,
+			Templates:             runCfg.Templates,
+			StaticSourcesPath:     runCfg.StaticSourcesPath,
+			LandingRedirectTarget: runCfg.LandingRedirectTarget,
+			TxtRecordTTL:          runCfg.TxtRecordTTL,
 			AuthServiceConfig: sharing.AuthServiceConfig{
 				BaseURL: runCfg.AuthServiceBaseURL,
 				Token:   runCfg.AuthServiceToken,
 			},
 			DNSServer: runCfg.DNSServer,
 		},
+		GeoLocationDB: runCfg.GeoLocationDB,
 	})
 	if err != nil {
 		return err

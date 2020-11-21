@@ -21,6 +21,9 @@ import (
 type Config struct {
 	Server  httpserver.Config
 	Handler sharing.Config
+
+	// Maxmind geolocation database path.
+	GeoLocationDB string
 }
 
 // Peer is the representation of a Linksharing service itself.
@@ -38,8 +41,8 @@ func New(log *zap.Logger, config Config) (_ *Peer, err error) {
 		Log: log,
 	}
 
-	if config.Server.GeoLocationDB != "" {
-		reader, err := maxminddb.Open(config.Server.GeoLocationDB)
+	if config.GeoLocationDB != "" {
+		reader, err := maxminddb.Open(config.GeoLocationDB)
 		if err != nil {
 			return nil, errs.New("unable to open geo location db: %w", err)
 		}

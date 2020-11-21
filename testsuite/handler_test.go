@@ -82,7 +82,7 @@ func TestNewHandler(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.config.Templates = "./../web/*.html"
+			testCase.config.Templates = "./../web/"
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
@@ -127,94 +127,86 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		{
 			name:   "GET missing access",
 			method: "GET",
+			path:   "s/",
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "GET malformed access",
 			method: "GET",
-			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
+			path:   path.Join("s", "BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "GET missing bucket",
 			method: "GET",
-			path:   serializedAccess,
+			path:   path.Join("s", serializedAccess),
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "GET object not found",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "Object not found",
 		},
 		{
 			name:   "GET success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
 			body:   "foo",
 		},
 		{
 			name:   "GET bucket listing success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket") + "/",
+			path:   path.Join("s", serializedAccess, "testbucket") + "/",
 			status: http.StatusOK,
 			body:   "test/",
 		},
 		{
-			name:   "GET bucket listing redirect",
-			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusMovedPermanently,
-			body:   "Moved Permanently",
-		},
-		{
 			name:   "GET prefix listing success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test") + "/",
+			path:   path.Join("s", serializedAccess, "testbucket", "test") + "/",
 			status: http.StatusOK,
 			body:   "foo",
 		},
 		{
 			name:   "HEAD missing access",
 			method: "HEAD",
+			path:   "s/",
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "HEAD malformed access",
 			method: "HEAD",
-			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
+			path:   path.Join("s", "BADACCESS", "testbucket", "test/foo"),
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "HEAD missing bucket",
 			method: "HEAD",
-			path:   serializedAccess,
+			path:   path.Join("s", serializedAccess),
 			status: http.StatusBadRequest,
 			body:   "Malformed request.",
 		},
 		{
 			name:   "HEAD object not found",
 			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "Object not found",
 		},
 		{
 			name:   "HEAD success",
 			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
-			status: http.StatusFound,
-			header: http.Header{
-				"Location": []string{"http://localhost/" + path.Join(serializedAccess, "testbucket", "test/foo")},
-			},
-			body: "",
+			path:   path.Join("s", serializedAccess, "testbucket", "test/foo"),
+			status: http.StatusOK,
+			body:   "",
 		},
 	}
 
@@ -225,7 +217,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		t.Run(testCase.name, func(t *testing.T) {
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, sharing.Config{
 				URLBase:   "http://localhost",
-				Templates: "./../web/*.html",
+				Templates: "./../web/",
 			})
 			require.NoError(t, err)
 

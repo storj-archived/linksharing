@@ -42,7 +42,7 @@ func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	handlerConfig := sharing.Config{
 		URLBase:   "https://localhost:15001",
-		Templates: "../web/*.html",
+		Templates: "../web/",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
 	handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
@@ -147,7 +147,7 @@ type serverTestCase struct {
 	Name          string
 	Address       string
 	AddressTLS    string
-	Handler       *sharing.Handler
+	Handler       http.Handler
 	TLSConfig     *TLSConfig
 	NewErr        string
 }

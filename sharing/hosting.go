@@ -5,25 +5,22 @@ package sharing
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"strings"
-
-	"go.uber.org/zap"
-
-	"storj.io/common/ranger/httpranger"
-	"storj.io/linksharing/objectranger"
-	"storj.io/uplink"
 )
 
 // handleHostingService deals with linksharing via custom URLs.
-func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (handler *Handler) handleHostingService(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+	defer mon.Task()(&ctx)(&err)
+
 	host, _, err := net.SplitHostPort(r.Host)
-	if err != nil && strings.Contains(err.Error(), "missing port in address") {
-		host = r.Host
-	} else if err != nil {
-		return err
+	if err != nil {
+		if aerr, ok := err.(*net.AddrError); ok && aerr.Err == "missing port in address" {
+			host = r.Host
+		} else {
+			return WithStatus(err, http.StatusBadRequest)
+		}
 	}
 
 	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
@@ -31,43 +28,17 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		return WithAction(err, "fetch access")
 	}
 
-	project, err := uplink.OpenProject(ctx, access)
-	if err != nil {
-		return WithAction(err, "open project")
-	}
-	defer func() {
-		if err := project.Close(); err != nil {
-			handler.log.With(zap.Error(err)).Warn("unable to close project")
-		}
-	}()
-
 	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
-	if key != "" { // there are no objects with the empty key
-		o, err := project.StatObject(ctx, bucket, key)
-		if err == nil {
-			// the requested key exists
-			httpranger.ServeContent(ctx, w, r, key, o.System.Created, objectranger.New(project, o, bucket))
-			return nil
-		}
-		if !strings.HasSuffix(key, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
-			// the requested key does not end in a slash, or there was an unknown error
-			return WithAction(err, "stat object")
-		}
-	}
 
-	// due to the above logic, by this point, the key is either exactly "" or ends in a "/"
-
-	k := key + "index.html"
-	o, err := project.StatObject(ctx, bucket, k)
-	if err == nil {
-		httpranger.ServeContent(ctx, w, r, k, o.System.Created, objectranger.New(project, o, bucket))
-		return nil
-	}
-	if !errors.Is(err, uplink.ErrObjectNotFound) {
-		return WithAction(err, "stat object - index.html")
-	}
-
-	return handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
+	return handler.present(ctx, w, r, &parsedRequest{
+		access:      access,
+		bucket:      bucket,
+		realKey:     key,
+		visibleKey:  strings.TrimPrefix(r.URL.Path, "/"),
+		title:       host,
+		root:        breadcrumb{Prefix: host, URL: "/"},
+		wrapDefault: false,
+	})
 }
 
 // determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.

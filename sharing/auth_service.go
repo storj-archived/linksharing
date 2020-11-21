@@ -4,6 +4,7 @@
 package sharing
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -32,14 +33,14 @@ type AuthServiceResponse struct {
 var AuthServiceError = errs.Class("auth service")
 
 // Resolve maps an access key into an auth service response.
-func (a AuthServiceConfig) Resolve(accessKeyID string) (_ *AuthServiceResponse, err error) {
+func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *AuthServiceResponse, err error) {
 	reqURL, err := url.Parse(a.BaseURL)
 	if err != nil {
 		return nil, AuthServiceError.Wrap(err)
 	}
 
 	reqURL.Path = path.Join(reqURL.Path, "/v1/access", accessKeyID)
-	req, err := http.NewRequest("GET", reqURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL.String(), nil)
 	if err != nil {
 		return nil, AuthServiceError.Wrap(err)
 	}

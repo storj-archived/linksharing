@@ -98,7 +98,7 @@ func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname stri
 		root = set.Lookup("storj-path")
 	}
 
-	access, err = parseAccess(serializedAccess, records.auth)
+	access, err = parseAccess(ctx, serializedAccess, records.auth)
 	if err != nil {
 		return nil, "", 0, err
 	}

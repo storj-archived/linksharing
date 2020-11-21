@@ -4,6 +4,7 @@
 package sharing
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -14,12 +15,12 @@ import (
 
 const versionAccessKeyID = 1 // we don't want to import stargate just for this
 
-func parseAccess(access string, cfg AuthServiceConfig) (*uplink.Access, error) {
+func parseAccess(ctx context.Context, access string, cfg AuthServiceConfig) (*uplink.Access, error) {
 	// check if the serializedAccess is actually an access key id
 	if _, version, err := base58.CheckDecode(access); err != nil {
 		return nil, WithStatus(errs.New("invalid access"), http.StatusBadRequest)
 	} else if version == versionAccessKeyID {
-		authResp, err := cfg.Resolve(access)
+		authResp, err := cfg.Resolve(ctx, access)
 		if err != nil {
 			return nil, err
 		}

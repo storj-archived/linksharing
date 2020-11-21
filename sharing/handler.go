@@ -4,11 +4,13 @@
 package sharing
 
 import (
+	"context"
 	"errors"
 	"html/template"
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,6 +24,18 @@ import (
 
 var mon = monkit.Package()
 
+// pageData is the type that is passed to the template rendering engine.
+type pageData struct {
+	Data  interface{} // data to provide to the page
+	Title string      // <title> for the page
+
+	// because we are serving data on someone else's domain, for our
+	// branded pages like file listing and the map view, all static assets
+	// must use an absolute url. this is the base url they are all based off
+	// of. automatically filled in by renderTemplate.
+	Base string
+}
+
 // Config specifies the handler configuration.
 type Config struct {
 	// URLBase is the base URL of the link sharing handler. It is used
@@ -30,6 +44,10 @@ type Config struct {
 
 	// Templates location with html templates.
 	Templates string
+
+	// StaticSourcesPath is the path to where the web assets are located
+	// on disk.
+	StaticSourcesPath string
 
 	// TxtRecordTTL is the duration for which an entry in the txtRecordCache is valid.
 	TxtRecordTTL time.Duration
@@ -40,18 +58,23 @@ type Config struct {
 
 	// DNS Server address, for TXT record lookup
 	DNSServer string
+
+	// LandingRedirectTarget is the url to redirect empty requests to.
+	LandingRedirectTarget string
 }
 
 // Handler implements the link sharing HTTP handler.
 //
 // architecture: Service
 type Handler struct {
-	log        *zap.Logger
-	urlBase    *url.URL
-	templates  *template.Template
-	mapper     *objectmap.IPDB
-	txtRecords *txtRecords
-	authConfig AuthServiceConfig
+	log             *zap.Logger
+	urlBase         *url.URL
+	templates       *template.Template
+	mapper          *objectmap.IPDB
+	txtRecords      *txtRecords
+	authConfig      AuthServiceConfig
+	static          http.Handler
+	landingRedirect string
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -66,27 +89,29 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		return nil, err
 	}
 
-	if config.Templates == "" {
-		config.Templates = "./web/*.html"
-	}
-	templates, err := template.ParseGlob(config.Templates)
+	templates, err := template.ParseGlob(filepath.Join(config.Templates, "*.html"))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Handler{
-		log:        log,
-		urlBase:    urlBase,
-		templates:  templates,
-		mapper:     mapper,
-		txtRecords: newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
-		authConfig: config.AuthServiceConfig,
+		log:             log,
+		urlBase:         urlBase,
+		templates:       templates,
+		mapper:          mapper,
+		txtRecords:      newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
+		authConfig:      config.AuthServiceConfig,
+		static:          http.StripPrefix("/static/", http.FileServer(http.Dir(config.StaticSourcesPath))),
+		landingRedirect: config.LandingRedirectTarget,
 	}, nil
 }
 
 // ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handlerErr := handler.serveHTTP(w, r)
+	ctx := r.Context()
+	defer mon.Task()(&ctx)(nil)
+
+	handlerErr := handler.serveHTTP(ctx, w, r)
 	if handlerErr == nil {
 		return
 	}
@@ -121,36 +146,43 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(status)
-	err := handler.templates.ExecuteTemplate(w, "error.html", message)
+	handler.renderTemplate(w, "error.html", pageData{Data: message, Title: "Error"})
+}
+
+func (handler *Handler) renderTemplate(w http.ResponseWriter, template string, data pageData) {
+	data.Base = strings.TrimSuffix(handler.urlBase.String(), "/")
+	err := handler.templates.ExecuteTemplate(w, template, data)
 	if err != nil {
 		handler.log.Error("error while executing template", zap.Error(err))
 	}
 }
 
-func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err error) {
-	ctx := r.Context()
+func (handler *Handler) serveHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	equal, err := compareHosts(r.Host, handler.urlBase.Host)
+	if r.Method != http.MethodHead && r.Method != http.MethodGet {
+		return WithStatus(errs.New("method not allowed"), http.StatusMethodNotAllowed)
+	}
+
+	ourDomain, err := compareHosts(r.Host, handler.urlBase.Host)
 	if err != nil {
 		return err
 	}
 
-	if !equal {
+	if !ourDomain {
 		return handler.handleHostingService(ctx, w, r)
 	}
 
-	locationOnly := false
-
-	switch r.Method {
-	case http.MethodHead:
-		locationOnly = true
-	case http.MethodGet:
+	switch {
+	case strings.HasPrefix(r.URL.Path, "/static/"):
+		handler.static.ServeHTTP(w, r.WithContext(ctx))
+		return nil
+	case handler.landingRedirect != "" && (r.URL.Path == "" || r.URL.Path == "/"):
+		http.Redirect(w, r, handler.landingRedirect, http.StatusSeeOther)
+		return nil
 	default:
-		return WithStatus(errs.New("method not allowed"), http.StatusMethodNotAllowed)
+		return handler.handleStandard(ctx, w, r)
 	}
-
-	return handler.handleTraditional(ctx, w, r, locationOnly)
 }
 
 func compareHosts(url1, url2 string) (equal bool, err error) {
