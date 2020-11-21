@@ -8,6 +8,11 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/zeebo/errs"
+)
+
+var (
+	errDNS = errs.Class("dns error")
 )
 
 // DNSClient is a wrapper utility around github.com/miekg/dns to make it
@@ -32,7 +37,7 @@ func (cli *DNSClient) Lookup(ctx context.Context, host string, recordType uint16
 	m := dns.Msg{}
 	m.SetQuestion(dns.Fqdn(host), recordType)
 	r, _, err := cli.c.ExchangeContext(ctx, &m, cli.dnsServer)
-	return r, err
+	return r, errDNS.Wrap(err)
 }
 
 // ResponseToTXTRecordSet returns a TXTRecordSet from a dns Lookup response.

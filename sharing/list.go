@@ -58,8 +58,9 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 			Prefix: item.IsPrefix,
 		})
 	}
-	if objects.Err() != nil {
-		return objects.Err()
+	err = objects.Err()
+	if err != nil {
+		return WithAction(err, "list objects")
 	}
 
 	return handler.templates.ExecuteTemplate(w, "prefix-listing.html", input)

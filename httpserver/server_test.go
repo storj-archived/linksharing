@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -188,7 +189,7 @@ func (testCase *serverTestCase) DoGet(tb testing.TB) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(tb, err)
-	assert.Equal(tb, "invalid request: missing access\n", string(body))
+	assert.True(tb, strings.HasPrefix(strings.ToLower(string(body)), "<!doctype html>\n"))
 }
 
 func mustSignerFromPEM(keyBytes string) crypto.Signer {

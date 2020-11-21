@@ -23,22 +23,17 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 	if err != nil && strings.Contains(err.Error(), "missing port in address") {
 		host = r.Host
 	} else if err != nil {
-		handler.log.Error("unable to handle request", zap.Error(err))
-		http.Error(w, "unable to handle request", http.StatusInternalServerError)
 		return err
 	}
 
 	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
 	if err != nil {
-		handler.log.Error("unable to handle request", zap.Error(err))
-		http.Error(w, "unable to handle request", http.StatusInternalServerError)
-		return err
+		return WithAction(err, "fetch access")
 	}
 
 	project, err := uplink.OpenProject(ctx, access)
 	if err != nil {
-		handler.handleUplinkErr(w, "open project", err)
-		return err
+		return WithAction(err, "open project")
 	}
 	defer func() {
 		if err := project.Close(); err != nil {
@@ -56,8 +51,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 		if !strings.HasSuffix(key, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
 			// the requested key does not end in a slash, or there was an unknown error
-			handler.handleUplinkErr(w, "stat object", err)
-			return err
+			return WithAction(err, "stat object")
 		}
 	}
 
@@ -70,16 +64,10 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		return nil
 	}
 	if !errors.Is(err, uplink.ErrObjectNotFound) {
-		handler.handleUplinkErr(w, "stat object", err)
-		return err
+		return WithAction(err, "stat object - index.html")
 	}
 
-	err = handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
-	if err != nil {
-		handler.handleUplinkErr(w, "list prefix", err)
-		return err
-	}
-	return nil
+	return handler.servePrefix(ctx, w, project, breadcrumb{Prefix: host, URL: "/"}, host, bucket, key, strings.TrimPrefix(r.URL.Path, "/"))
 }
 
 // determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.

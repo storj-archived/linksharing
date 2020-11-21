@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/spacemonkeygo/monkit/v3"
+	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
 	"storj.io/linksharing/objectmap"
@@ -85,9 +86,45 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 
 // ServeHTTP handles link sharing requests.
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// serveHTTP handles the request in full. the error that is returned can
-	// be ignored since it was only added to facilitate monitoring.
-	_ = handler.serveHTTP(w, r)
+	handlerErr := handler.serveHTTP(w, r)
+	if handlerErr == nil {
+		return
+	}
+
+	status := http.StatusInternalServerError
+	message := "Internal server error. Please try again later."
+	action := GetAction(handlerErr, "unknown")
+	skipLog := false
+	switch {
+	case errors.Is(handlerErr, uplink.ErrBucketNotFound):
+		status = http.StatusNotFound
+		message = "Oops! Bucket not found."
+		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrObjectNotFound):
+		status = http.StatusNotFound
+		message = "Oops! Object not found."
+		skipLog = true
+	default:
+		status = GetStatus(handlerErr, status)
+		switch status {
+		case http.StatusForbidden:
+			message = "Access denied."
+			skipLog = true
+		case http.StatusBadRequest, http.StatusMethodNotAllowed:
+			message = "Malformed request. Please try again."
+			skipLog = true
+		}
+	}
+
+	if !skipLog {
+		handler.log.Error("unable to handle request", zap.Error(handlerErr), zap.String("action", action))
+	}
+
+	w.WriteHeader(status)
+	err := handler.templates.ExecuteTemplate(w, "error.html", message)
+	if err != nil {
+		handler.log.Error("error while executing template", zap.Error(err))
+	}
 }
 
 func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err error) {
@@ -110,9 +147,7 @@ func (handler *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) (err e
 		locationOnly = true
 	case http.MethodGet:
 	default:
-		err = errors.New("method not allowed")
-		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
-		return err
+		return WithStatus(errs.New("method not allowed"), http.StatusMethodNotAllowed)
 	}
 
 	return handler.handleTraditional(ctx, w, r, locationOnly)
@@ -138,26 +173,6 @@ func compareHosts(url1, url2 string) (equal bool, err error) {
 		return false, nil
 	}
 	return true, nil
-}
-
-func (handler *Handler) handleUplinkErr(w http.ResponseWriter, action string, err error) {
-	switch {
-	case errors.Is(err, uplink.ErrBucketNotFound):
-		w.WriteHeader(http.StatusNotFound)
-		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Bucket not found.")
-		if err != nil {
-			handler.log.Error("error while executing template", zap.Error(err))
-		}
-	case errors.Is(err, uplink.ErrObjectNotFound):
-		w.WriteHeader(http.StatusNotFound)
-		err = handler.templates.ExecuteTemplate(w, "404.html", "Oops! Object not found.")
-		if err != nil {
-			handler.log.Error("error while executing template", zap.Error(err))
-		}
-	default:
-		handler.log.Error("unable to handle request", zap.String("action", action), zap.Error(err))
-		http.Error(w, "unable to handle request", http.StatusInternalServerError)
-	}
 }
 
 func parseURLBase(s string) (*url.URL, error) {

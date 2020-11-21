@@ -5,7 +5,6 @@ package sharing
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -32,15 +31,12 @@ type Location struct {
 func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWriter, r *http.Request, locationOnly bool) error {
 	rawRequest, access, serializedAccess, bucket, key, err := parseRequestPath(r.URL.Path, handler.authConfig)
 	if err != nil {
-		err = fmt.Errorf("invalid request: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
 	p, err := uplink.OpenProject(ctx, access)
 	if err != nil {
-		handler.handleUplinkErr(w, "open project", err)
-		return err
+		return WithAction(err, "open project")
 	}
 	defer func() {
 		if err := p.Close(); err != nil {
@@ -59,15 +55,14 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 			URL:    "/" + serializedAccess + "/" + bucket + "/",
 		}, bucket, bucket, key, key)
 		if err != nil {
-			handler.handleUplinkErr(w, "list prefix", err)
+			return err
 		}
 		return nil
 	}
 
 	o, err := p.StatObject(ctx, bucket, key)
 	if err != nil {
-		handler.handleUplinkErr(w, "stat object", err)
-		return err
+		return WithAction(err, "stat object")
 	}
 
 	if locationOnly {
@@ -81,8 +76,7 @@ func (handler *Handler) handleTraditional(ctx context.Context, w http.ResponseWr
 	if !download && !view && !rawRequest {
 		ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, access, bucket, key)
 		if err != nil {
-			handler.handleUplinkErr(w, "get object IPs", err)
-			return err
+			return WithAction(err, "get object IPs")
 		}
 
 		var locations []Location
@@ -146,9 +140,9 @@ func parseRequestPath(p string, cfg AuthServiceConfig) (rawRequest bool, _ *upli
 	}
 	if len(segments) == 1 {
 		if segments[0] == "" {
-			return rawRequest, nil, "", "", "", errs.New("missing access")
+			return rawRequest, nil, "", "", "", WithStatus(errs.New("missing access"), http.StatusBadRequest)
 		}
-		return rawRequest, nil, "", "", "", errs.New("missing bucket")
+		return rawRequest, nil, "", "", "", WithStatus(errs.New("missing bucket"), http.StatusBadRequest)
 	}
 
 	serializedAccess = segments[0]
