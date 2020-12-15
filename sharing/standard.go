@@ -6,6 +6,7 @@ package sharing
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/zeebo/errs"
@@ -24,7 +25,9 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 		path = path[len("s/"):]
 		pr.wrapDefault = true
 	default: // backwards compatibility
-		http.Redirect(w, r, "/s/"+path, http.StatusSeeOther)
+		// preserve query params
+		destination := (&url.URL{Path: "/s/" + path, RawQuery: r.URL.RawQuery}).String()
+		http.Redirect(w, r, destination, http.StatusSeeOther)
 		return
 	}
 
