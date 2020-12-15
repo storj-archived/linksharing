@@ -19,7 +19,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"storj.io/common/errs2"
-	"storj.io/linksharing/sharing"
 )
 
 const (
@@ -47,9 +46,6 @@ type Config struct {
 	// 10 seconds if unset. If set to a negative value, the server will be
 	// closed immediately.
 	ShutdownTimeout time.Duration
-
-	// Maxmind geolocation database path.
-	GeoLocationDB string
 }
 
 // TLSConfig is a struct to handle the preferred/configured TLS options.
@@ -66,7 +62,7 @@ type TLSConfig struct {
 // architecture: Endpoint
 type Server struct {
 	log     *zap.Logger
-	handler *sharing.Handler
+	handler http.Handler
 	name    string
 
 	listener        net.Listener
@@ -77,7 +73,7 @@ type Server struct {
 }
 
 // New creates a new URL Service Server.
-func New(log *zap.Logger, handler *sharing.Handler, config Config) (*Server, error) {
+func New(log *zap.Logger, handler http.Handler, config Config) (*Server, error) {
 	switch {
 	case config.Address == "":
 		return nil, errs.New("server address is required")
@@ -85,12 +81,7 @@ func New(log *zap.Logger, handler *sharing.Handler, config Config) (*Server, err
 		return nil, errs.New("server handler is required")
 	}
 
-	mux := http.NewServeMux()
-	// TODO add static folder location to handler configuration
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
-	mux.Handle("/", handler)
-
-	tlsConfig, httpHandler, err := configureTLS(config.TLSConfig, mux)
+	tlsConfig, httpHandler, err := configureTLS(config.TLSConfig, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +105,7 @@ func New(log *zap.Logger, handler *sharing.Handler, config Config) (*Server, err
 	}
 
 	serverTLS := &http.Server{
-		Handler:   mux,
+		Handler:   handler,
 		TLSConfig: tlsConfig,
 		ErrorLog:  zap.NewStdLog(log),
 	}

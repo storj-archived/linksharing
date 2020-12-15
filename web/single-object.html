@@ -1,4 +1,4 @@
-{{template "header.html"}}
+{{template "header.html" .}}
 
 <div class="container-fluid">
   <div class="row">
@@ -7,8 +7,8 @@
 
       <div class="row d-none d-lg-block mb-4">
         <div class="col text-center">
-          <a href="http://tardigrade.io/"><img src="/static/img/logo.svg" class="logo" alt="Logo"></a>
-          <p class="file-title-top text-center">{{.Key}}</p>
+          <a href="http://tardigrade.io/"><img src="{{.Base}}/static/img/logo.svg" class="logo" alt="Logo"></a>
+          <p class="file-title-top text-center">{{.Data.Key}}</p>
         </div>
       </div>
 
@@ -17,7 +17,7 @@
           <div class="card p-3 p-lg-5">
             <div class="row">
               <div class="col text-center mb-4 mt-3 mt-lg-0">
-                <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Key}}</span> on Tardigrade</h6>
+                <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Data.Key}}</span> on Tardigrade</h6>
               </div>
             </div>
             <div class="row">
@@ -44,7 +44,8 @@
                     ]
                   }).addTo(mymap);
 
-                  var routes = {{.Locations}};
+                  // TODO: do something better when this has no IP addresses.
+                  var routes = {{.Data.Locations}} || [];
 
                   circleOpts = {
                     color: '#2582ff',
@@ -62,8 +63,8 @@
               </div>
               <div class="col-12 col-lg-4 text-center text-lg-left">
                 <p class="mt-4"><strong>Status: <span>Ready for download</span></strong></p>
-                <p class="mt-4"><strong>File Size:</strong> <span>{{.Size}}</span></p>
-                <p class="mt-4"><strong>File Pieces:</strong> <span>{{.Pieces}}</span></p>
+                <p class="mt-4"><strong>File Size:</strong> <span>{{.Data.Size}}</span></p>
+                <p class="mt-4"><strong>File Pieces:</strong> <span>{{.Data.Pieces}}</span></p>
               </div>
             </div>
           </div>
@@ -83,8 +84,8 @@
     <div class="col-lg-4 col-xl-3 order-1 order-lg-2">
       <div class="row mb-5 mt-3">
         <div class="col-2">
-          <a href="http://tardigrade.io/" class="d-block d-lg-none mt-1"><img src="/static/img/logo.svg" class="logo-mobile" alt="Logo"></a>
-          <a href="?download" class="btn btn-outline-secondary d-none d-lg-inline-block"><img src="/static/img/icon-download-blue.svg" alt="Download"></a>
+          <a href="http://tardigrade.io/" class="d-block d-lg-none mt-1"><img src="{{.Base}}/static/img/logo.svg" class="logo-mobile" alt="Logo"></a>
+          <a href="?download" class="btn btn-outline-secondary d-none d-lg-inline-block" download><img src="{{.Base}}/static/img/icon-download-blue.svg" alt="Download"></a>
         </div>
         <div class="col-10 text-right">
           <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
@@ -94,16 +95,16 @@
       <div class="row text-center text-lg-left">
         <div class="col">
           <div class="file">
-            <img src="/static/img/icon-file.svg" class="d-block d-lg-inline-block mx-auto" alt="File icon">
-            <h5 class="file-title-sidebar">{{.Key}}</h5>
+            <img src="{{.Base}}/static/img/icon-file.svg" class="d-block d-lg-inline-block mx-auto" alt="File icon">
+            <h5 class="file-title-sidebar">{{.Data.Key}}</h5>
           </div>
-          <p class="mt-3">{{.Size}}</p>
+          <p class="mt-3">{{.Data.Size}}</p>
           <div class="row justify-content-center">
             <div class="col-12 col-sm-4 col-lg-12">
-              <a href="?download" class="btn btn-primary btn-lg btn-block mb-3">Download <img src="/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
+              <a href="?download" class="btn btn-primary btn-lg btn-block mb-3" download>Download <img src="{{.Base}}/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
             </div>
             <div class="col-12 col-sm-4 col-lg-12">
-              <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-5 border-2 btn-share">Share <img src="/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
+              <button type="button" onclick="openModal()" class="btn btn-outline-primary btn-lg btn-block mb-5 border-2 btn-share">Share <img src="{{.Base}}/static/img/icon-share.svg" alt="Share" class="ml-2"></button>
             </div>
           </div>
         </div>
@@ -121,7 +122,7 @@
         <div class="copy-notification" id="copyNotification">
           <p class="copy-notification-text">Link Copied!</p>
         </div>
-        <h5 class="modal-title mx-auto" id="shareModalLabel">Share {{.Key}}</h5>
+        <h5 class="modal-title mx-auto" id="shareModalLabel">Share {{.Data.Key}}</h5>
         <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button> -->
@@ -169,4 +170,4 @@
   }
 </script>
 
-{{template "footer.html"}}
+{{template "footer.html" .}}

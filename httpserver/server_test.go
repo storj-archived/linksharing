@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,7 +42,7 @@ func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	handlerConfig := sharing.Config{
 		URLBase:   "https://localhost:15001",
-		Templates: "../web/*.html",
+		Templates: "../web/",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
 	handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, handlerConfig)
@@ -146,7 +147,7 @@ type serverTestCase struct {
 	Name          string
 	Address       string
 	AddressTLS    string
-	Handler       *sharing.Handler
+	Handler       http.Handler
 	TLSConfig     *TLSConfig
 	NewErr        string
 }
@@ -188,7 +189,7 @@ func (testCase *serverTestCase) DoGet(tb testing.TB) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(tb, err)
-	assert.Equal(tb, "invalid request: missing access\n", string(body))
+	assert.True(tb, strings.HasPrefix(strings.ToLower(string(body)), "<!doctype html>\n"))
 }
 
 func mustSignerFromPEM(keyBytes string) crypto.Signer {
