@@ -135,6 +135,9 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case http.StatusForbidden:
 			message = "Access denied."
 			skipLog = true
+		case http.StatusNotFound:
+			message = "Not found."
+			skipLog = true
 		case http.StatusBadRequest, http.StatusMethodNotAllowed:
 			message = "Malformed request. Please try again."
 			skipLog = true

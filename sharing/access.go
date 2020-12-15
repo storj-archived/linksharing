@@ -13,30 +13,28 @@ import (
 	"storj.io/uplink"
 )
 
-const versionAccessKeyID = 1 // we don't want to import stargate just for this
-
 func parseAccess(ctx context.Context, access string, cfg AuthServiceConfig) (*uplink.Access, error) {
-	// check if the serializedAccess is actually an access key id
-	if _, version, err := base58.CheckDecode(access); err != nil {
-		return nil, WithStatus(errs.New("invalid access"), http.StatusBadRequest)
-	} else if version == versionAccessKeyID {
-		authResp, err := cfg.Resolve(ctx, access)
+	wrappedParse := func(access string) (*uplink.Access, error) {
+		parsed, err := uplink.ParseAccess(access)
 		if err != nil {
-			return nil, err
+			return nil, WithStatus(err, http.StatusBadRequest)
 		}
-		if !authResp.Public {
-			return nil, WithStatus(errs.New("non-public access key id"), http.StatusForbidden)
-		}
-		access = authResp.AccessGrant
-	} else if version == 0 { // 0 could be any number of things, but we just assume an access
-	} else {
-		return nil, WithStatus(errs.New("invalid access version"), http.StatusBadRequest)
+		return parsed, nil
 	}
 
-	parsed, err := uplink.ParseAccess(access)
+	// production access grants are base58check encoded with version zero.
+	if _, version, err := base58.CheckDecode(access); err == nil && version == 0 {
+		return wrappedParse(access)
+	}
+
+	// otherwise, assume an access key.
+	authResp, err := cfg.Resolve(ctx, access)
 	if err != nil {
-		return nil, WithStatus(err, http.StatusBadRequest)
+		return nil, err
+	}
+	if !authResp.Public {
+		return nil, WithStatus(errs.New("non-public access key id"), http.StatusForbidden)
 	}
 
-	return parsed, nil
+	return wrappedParse(authResp.AccessGrant)
 }
