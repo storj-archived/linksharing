@@ -4,6 +4,7 @@
 package sharing
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -24,7 +25,6 @@ type AuthServiceConfig struct {
 // AuthServiceResponse is the struct representing the response from the auth service.
 type AuthServiceResponse struct {
 	AccessGrant string `json:"access_grant"`
-	SecretKey   string `json:"secret_key"`
 	Public      bool   `json:"public"`
 }
 
@@ -32,32 +32,38 @@ type AuthServiceResponse struct {
 var AuthServiceError = errs.Class("auth service")
 
 // Resolve maps an access key into an auth service response.
-func (a AuthServiceConfig) Resolve(accessKeyID string) (_ *AuthServiceResponse, err error) {
+func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *AuthServiceResponse, err error) {
 	reqURL, err := url.Parse(a.BaseURL)
 	if err != nil {
-		return nil, AuthServiceError.Wrap(err)
+		return nil, WithStatus(AuthServiceError.Wrap(err),
+			http.StatusInternalServerError)
 	}
 
 	reqURL.Path = path.Join(reqURL.Path, "/v1/access", accessKeyID)
-	req, err := http.NewRequest("GET", reqURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL.String(), nil)
 	if err != nil {
-		return nil, AuthServiceError.Wrap(err)
+		return nil, WithStatus(AuthServiceError.Wrap(err),
+			http.StatusInternalServerError)
 	}
 	req.Header.Set("Authorization", "Bearer "+a.Token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, AuthServiceError.Wrap(err)
+		return nil, WithStatus(AuthServiceError.Wrap(err),
+			http.StatusInternalServerError)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, AuthServiceError.New("invalid status code: %d", resp.StatusCode)
+		return nil, WithStatus(
+			AuthServiceError.New("invalid status code: %d", resp.StatusCode),
+			resp.StatusCode)
 	}
 
 	var authResp AuthServiceResponse
 	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return nil, AuthServiceError.Wrap(err)
+		return nil, WithStatus(AuthServiceError.Wrap(err),
+			http.StatusInternalServerError)
 	}
 
 	return &authResp, nil

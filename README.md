@@ -79,28 +79,26 @@ or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). D
 1. Share an object or path to an object. 
    If you are sharing an entire bucket or sub-folder, you will want to name your home page index.html.
    Anything shared with `--dns` will be readonly and available publicly (no secret key needed).
+   
+   `uplink share --dns <hostname> sj://<path>`
 
-`uplink share --dns <hostname> sj://<path>`
+   Prints a zone file with the information needed to create 3 dns records. Remember to update the $ORIGIN with your domain name. You may also change the $TTL.
 
-Prints a zone file with the information needed to create 3 dns records. Remember to update the $ORIGIN with your domain name. You may also change the $TTL.
-
-```
-$ORIGIN example.com.
-$TTL    3600
-<hostname>    	IN	CNAME	link.tardigradeshare.io.
-txt-<hostname> 	IN	TXT  	storj-root:<path>
-txt-<hostname> 	IN	TXT  	storj-access:<access key>
-```
-
-
-For example `uplink share --dns www sj://bucket/prefix` will output:
-```
-$ORIGIN example.com.
-$TTL    3600
-www    	IN	CNAME	link.tardigradeshare.io.
-txt-www	IN	TXT  	storj-root:bucket/prefix
-txt-www	IN	TXT  	storj-access:jqaz8xihdea93jfbaks8324jrhq1
-```
+   ```
+   $ORIGIN example.com.
+   $TTL    3600
+   <hostname>    	IN	CNAME	link.tardigradeshare.io.
+   txt-<hostname> 	IN	TXT  	storj-root:<path>
+   txt-<hostname> 	IN	TXT  	storj-access:<access key>
+   ```
+   For example `uplink share --dns www sj://bucket/prefix` will output:
+   ```
+   $ORIGIN example.com.
+   $TTL    3600
+   www    	IN	CNAME	link.tardigradeshare.io.
+   txt-www	IN	TXT  	storj-root:bucket/prefix
+   txt-www	IN	TXT  	storj-access:jqaz8xihdea93jfbaks8324jrhq1
+   ```
 
 2. Create a CNAME record on your hostname using our linksharing common URL `link.tardigradeshare.io.` as the target name.
  

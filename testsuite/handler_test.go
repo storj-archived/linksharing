@@ -4,9 +4,12 @@
 package testsuite
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +17,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"storj.io/common/testcontext"
+	"storj.io/common/testrand"
 	"storj.io/linksharing/objectmap"
 	"storj.io/linksharing/sharing"
 	"storj.io/storj/private/testplanet"
@@ -82,7 +86,7 @@ func TestNewHandler(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.config.Templates = "./../web/*.html"
+			testCase.config.Templates = "./../web/"
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, testCase.config)
 			if testCase.err != "" {
 				require.EqualError(t, err, testCase.err)
@@ -102,6 +106,11 @@ func TestHandlerRequests(t *testing.T) {
 	}, testHandlerRequests)
 }
 
+type authHandlerEntry struct {
+	grant  string
+	public bool
+}
+
 func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testplanet.Planet) {
 	err := planet.Uplinks[0].Upload(ctx, planet.Satellites[0], "testbucket", "test/foo", []byte("FOO"))
 	require.NoError(t, err)
@@ -110,111 +119,161 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 	serializedAccess, err := access.Serialize()
 	require.NoError(t, err)
 
+	authToken := hex.EncodeToString(testrand.BytesInt(16))
+	validAuthServer := httptest.NewServer(makeAuthHandler(t, map[string]authHandlerEntry{
+		"GOODACCESS":    {serializedAccess, true},
+		"PRIVATEACCESS": {serializedAccess, false},
+	}, authToken))
+	defer validAuthServer.Close()
+
 	testCases := []struct {
-		name   string
-		method string
-		path   string
-		status int
-		header http.Header
-		body   string
+		name       string
+		method     string
+		path       string
+		status     int
+		header     http.Header
+		body       string
+		authserver string
 	}{
 		{
 			name:   "invalid method",
 			method: "PUT",
 			status: http.StatusMethodNotAllowed,
-			body:   "method not allowed\n",
+			body:   "Malformed request.",
 		},
 		{
 			name:   "GET missing access",
 			method: "GET",
+			path:   "s/",
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing access\n",
+			body:   "Malformed request.",
 		},
 		{
-			name:   "GET malformed access",
-			method: "GET",
-			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: invalid access\n",
+			name:       "GET misconfigured auth server",
+			method:     "GET",
+			path:       path.Join("s", "ACCESS", "testbucket", "test/foo"),
+			status:     http.StatusInternalServerError,
+			body:       "Internal server error.",
+			authserver: "invalid://",
+		},
+		{
+			name:       "GET missing access key",
+			method:     "GET",
+			path:       path.Join("s", "MISSINGACCESS", "testbucket", "test/foo"),
+			status:     http.StatusNotFound,
+			body:       "Not found.",
+			authserver: validAuthServer.URL,
+		},
+		{
+			name:       "GET private access key",
+			method:     "GET",
+			path:       path.Join("s", "PRIVATEACCESS", "testbucket", "test/foo"),
+			status:     http.StatusForbidden,
+			body:       "Access denied.",
+			authserver: validAuthServer.URL,
+		},
+		{
+			name:       "GET found access key",
+			method:     "GET",
+			path:       path.Join("s", "GOODACCESS", "testbucket", "test/foo"),
+			status:     http.StatusOK,
+			body:       "foo",
+			authserver: validAuthServer.URL,
 		},
 		{
 			name:   "GET missing bucket",
 			method: "GET",
-			path:   serializedAccess,
+			path:   path.Join("s", serializedAccess),
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket\n",
+			body:   "Malformed request.",
 		},
 		{
 			name:   "GET object not found",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "Object not found",
 		},
 		{
 			name:   "GET success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/foo"),
 			status: http.StatusOK,
 			body:   "foo",
 		},
 		{
 			name:   "GET bucket listing success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket") + "/",
+			path:   path.Join("s", serializedAccess, "testbucket") + "/",
 			status: http.StatusOK,
 			body:   "test/",
 		},
 		{
-			name:   "GET bucket listing redirect",
-			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket"),
-			status: http.StatusMovedPermanently,
-			body:   "Moved Permanently",
-		},
-		{
 			name:   "GET prefix listing success",
 			method: "GET",
-			path:   path.Join(serializedAccess, "testbucket", "test") + "/",
+			path:   path.Join("s", serializedAccess, "testbucket", "test") + "/",
 			status: http.StatusOK,
 			body:   "foo",
 		},
 		{
 			name:   "HEAD missing access",
 			method: "HEAD",
+			path:   "s/",
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing access\n",
+			body:   "Malformed request.",
 		},
 		{
-			name:   "HEAD malformed access",
-			method: "HEAD",
-			path:   path.Join("BADACCESS", "testbucket", "test/foo"),
-			status: http.StatusBadRequest,
-			body:   "invalid request: invalid access\n",
+			name:       "HEAD misconfigured auth server",
+			method:     "HEAD",
+			path:       path.Join("s", "ACCESS", "testbucket", "test/foo"),
+			status:     http.StatusInternalServerError,
+			body:       "Internal server error.",
+			authserver: "invalid://",
+		},
+		{
+			name:       "HEAD missing access key",
+			method:     "HEAD",
+			path:       path.Join("s", "MISSINGACCESS", "testbucket", "test/foo"),
+			status:     http.StatusNotFound,
+			body:       "Not found.",
+			authserver: validAuthServer.URL,
+		},
+		{
+			name:       "HEAD private access key",
+			method:     "GET",
+			path:       path.Join("s", "PRIVATEACCESS", "testbucket", "test/foo"),
+			status:     http.StatusForbidden,
+			body:       "Access denied",
+			authserver: validAuthServer.URL,
+		},
+		{
+			name:       "HEAD found access key",
+			method:     "GET",
+			path:       path.Join("s", "GOODACCESS", "testbucket", "test/foo"),
+			status:     http.StatusOK,
+			body:       "",
+			authserver: validAuthServer.URL,
 		},
 		{
 			name:   "HEAD missing bucket",
 			method: "HEAD",
-			path:   serializedAccess,
+			path:   path.Join("s", serializedAccess),
 			status: http.StatusBadRequest,
-			body:   "invalid request: missing bucket\n",
+			body:   "Malformed request.",
 		},
 		{
 			name:   "HEAD object not found",
 			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket", "test/bar"),
+			path:   path.Join("s", serializedAccess, "testbucket", "test/bar"),
 			status: http.StatusNotFound,
 			body:   "Object not found",
 		},
 		{
 			name:   "HEAD success",
 			method: "HEAD",
-			path:   path.Join(serializedAccess, "testbucket", "test/foo"),
-			status: http.StatusFound,
-			header: http.Header{
-				"Location": []string{"http://localhost/" + path.Join(serializedAccess, "testbucket", "test/foo")},
-			},
-			body: "",
+			path:   path.Join("s", serializedAccess, "testbucket", "test/foo"),
+			status: http.StatusOK,
+			body:   "",
 		},
 	}
 
@@ -225,7 +284,11 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		t.Run(testCase.name, func(t *testing.T) {
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, sharing.Config{
 				URLBase:   "http://localhost",
-				Templates: "./../web/*.html",
+				Templates: "./../web/",
+				AuthServiceConfig: sharing.AuthServiceConfig{
+					BaseURL: testCase.authserver,
+					Token:   authToken,
+				},
 			})
 			require.NoError(t, err)
 
@@ -242,4 +305,23 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			assert.Contains(t, w.Body.String(), testCase.body, "body does not match")
 		})
 	}
+}
+
+func makeAuthHandler(t *testing.T, accessKeys map[string]authHandlerEntry, token string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.True(t, strings.HasPrefix(r.URL.Path, "/v1/access/"))
+		require.Equal(t, r.Header.Get("Authorization"), "Bearer "+token)
+		accessKey := strings.TrimPrefix(r.URL.Path, "/v1/access/")
+		if grant, ok := accessKeys[accessKey]; ok {
+			require.NoError(t, json.NewEncoder(w).Encode(struct {
+				AccessGrant string `json:"access_grant"`
+				Public      bool   `json:"public"`
+			}{
+				AccessGrant: grant.grant,
+				Public:      grant.public,
+			}))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
 }

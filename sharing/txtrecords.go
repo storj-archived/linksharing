@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/zeebo/errs"
 
 	"storj.io/uplink"
 )
@@ -83,7 +84,7 @@ func (records *txtRecords) updateCache(hostname, root string, access *uplink.Acc
 func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Access, root string, ttl time.Duration, err error) {
 	r, err := records.dns.Lookup(ctx, "txt-"+hostname, dns.TypeTXT)
 	if err != nil {
-		return nil, "", 0, err
+		return nil, "", 0, errs.New("failure with hostname %q: %w", hostname, err)
 	}
 	set := ResponseToTXTRecordSet(r)
 
@@ -98,9 +99,9 @@ func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname stri
 		root = set.Lookup("storj-path")
 	}
 
-	access, err = parseAccess(serializedAccess, records.auth)
+	access, err = parseAccess(ctx, serializedAccess, records.auth)
 	if err != nil {
-		return nil, "", 0, err
+		return nil, "", 0, errs.New("failure with hostname %q: %w", hostname, err)
 	}
 
 	return access, root, set.TTL(), nil
