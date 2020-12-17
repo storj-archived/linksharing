@@ -59,36 +59,65 @@ After configuration is complete, running the link sharing is as simple as:
 $ linksharing run
 ```
 
-## Custom URL configuration and static site hosting*
+## Standard Linksharing with Uplink
+Anything shared with `--url` will be readonly and available publicly (no secret key needed).
 
-You can use your own domain for your linksharing and static site hosting with the following setup.
- 
-** We don't recommend utilizing this service for high traffic sites - due to security and cost-efficiency concerns - until we enable access to key shortening and page 
-caching.
-1. Share your READONLY file or directory via `uplink share --readonly --dns sj://<your path>`. 
-The `--dns` flag will print out the info needed to create your dns records.
+`uplink share --url sj://<path>`
 
-2. Create your CNAME with our linksharing common URL (`link.tardigradeshare.io.`).
+results in
+
+`https://link.tardigradeshare.io/jqaz8xihdea93jfbaks8324jrhq1/<path>`
+
+## Custom URL configuration and static site hosting with Uplink
+
+You can use your own domain and host your website on Tardigrade with the following setup.
+
+0. Upload your static site and other files to tardigrade using [Uplink](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli) 
+or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli). 
    
+
+1. Share an object or path to an object. 
+   If you are sharing an entire bucket or sub-folder, you will want to name your home page index.html.
+   Anything shared with `--dns` will be readonly and available publicly (no secret key needed).
+   
+   `uplink share --dns <hostname> sj://<path>`
+
+   Prints a zone file with the information needed to create 3 dns records. Remember to update the $ORIGIN with your domain name. You may also change the $TTL.
+
+   ```
+   $ORIGIN example.com.
+   $TTL    3600
+   <hostname>    	IN	CNAME	link.tardigradeshare.io.
+   txt-<hostname> 	IN	TXT  	storj-root:<path>
+   txt-<hostname> 	IN	TXT  	storj-access:<access key>
+   ```
+   For example `uplink share --dns www sj://bucket/prefix` will output:
+   ```
+   $ORIGIN example.com.
+   $TTL    3600
+   www    	IN	CNAME	link.tardigradeshare.io.
+   txt-www	IN	TXT  	storj-root:bucket/prefix
+   txt-www	IN	TXT  	storj-access:jqaz8xihdea93jfbaks8324jrhq1
+   ```
+
+2. Create a CNAME record on your hostname using our linksharing common URL `link.tardigradeshare.io.` as the target name.
+ 
     <img src="docs/images/cname.png" width="50%">
 
-3. Create 3 TXT records with the following info. You will need to add the entire string (including the prefix) to your records.
-   
-    a. `storj_grant-1` is the first part of your access grant.
-   
-    <img src="docs/images/grant1.png" width="50%">
+3. Create 2 TXT records, prepending `txt-` to your hostname.
     
-    b. `storj_grant-2` is the second part of your access grant. The two parts don't need to be exactly 1/2 of the entire access grant.
-     We require at least 2 strings because of txt record length restrictions. If your access grant is more than 450 characters long, you might need to split it into even more sections.
+    a. Root Path: the bucket, object prefix key, or individual object that you want your root domain to resolve to.
     
-    <img src="docs/images/grant2.png" width="50%">
+    <img src="docs/images/root.png" width="50%">
     
-    c. `storj_root` is the path of the shared object. It may be the path to a bucket, a directory, or an individual object.
-   
-    <img src="docs/images/bucket.png" width="30%">
-    <img src="docs/images/dir.png" width="30%">
-    <img src="docs/images/obj.png" width="30%">
+    b. Access Key: the readonly and public access key to your root path.
+ 
+    <img src="docs/images/access.png" width="50%">
+
+4. You can check to make sure your dns records are ready with `dig @1.1.1.1 txt-<hostname>.<domain> TXT`        
     
-4. That's it! You should be all set to share your files or directories with your custom domain.
+5. Without further action, your site will be served with http. You can secure your site by using a https proxy server such as [Cloudflare](https://www.cloudflare.com/)
+
+6. That's it! You should be all set to access your website e.g. `http://www.example.test`
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
