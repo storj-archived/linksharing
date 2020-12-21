@@ -5,9 +5,15 @@ package sharing
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
+
+	"storj.io/uplink"
 )
 
 // handleHostingService deals with linksharing via custom URLs.
@@ -30,7 +36,17 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 
 	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
 
-	return handler.present(ctx, w, r, &parsedRequest{
+	project, err := uplink.OpenProject(ctx, access)
+	if err != nil {
+		return WithAction(err, "open project")
+	}
+	defer func() {
+		if err := project.Close(); err != nil {
+			handler.log.With(zap.Error(err)).Warn("unable to close project")
+		}
+	}()
+
+	err = handler.presentWithProject(ctx, w, r, &parsedRequest{
 		access:      access,
 		bucket:      bucket,
 		realKey:     key,
@@ -38,7 +54,36 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		title:       host,
 		root:        breadcrumb{Prefix: host, URL: "/"},
 		wrapDefault: false,
-	})
+	}, project)
+
+	// if the error is anything other than ObjectNotFound, return to normal
+	// error handling. this includes the err == nil case
+	if !errors.Is(err, uplink.ErrObjectNotFound) {
+		return err
+	}
+
+	// in ObjectNotFound, let the user provide a custom 404 page
+
+	bucket, key = determineBucketAndObjectKey(root, "/404.html")
+	download, err := project.DownloadObject(ctx, bucket, key, nil)
+	if err != nil {
+		// if this returns uplink.ErrObjectNotFound, then, that's still
+		// the right error, and we should return it and return our normal
+		// 404 page, so this is fine to just pass through.
+		return WithAction(err, "download 404")
+	}
+	defer func() {
+		if err := download.Close(); err != nil {
+			handler.log.With(zap.Error(err)).Warn("unable to close 404 download")
+		}
+	}()
+
+	w.WriteHeader(http.StatusNotFound)
+	_, err = io.Copy(w, download)
+	if err != nil {
+		return WithAction(err, "serve 404")
+	}
+	return nil
 }
 
 // determineBucketAndObjectKey is a helper function to parse storj_root and the url into the bucket and object key.

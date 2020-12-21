@@ -43,6 +43,12 @@ func (handler *Handler) present(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}()
 
+	return handler.presentWithProject(ctx, w, r, pr, project)
+}
+
+func (handler *Handler) presentWithProject(ctx context.Context, w http.ResponseWriter, r *http.Request, pr *parsedRequest, project *uplink.Project) (err error) {
+	defer mon.Task()(&ctx)(&err)
+
 	if pr.realKey != "" { // there are no objects with the empty key
 		o, err := project.StatObject(ctx, pr.bucket, pr.realKey)
 		if err == nil {
