@@ -26,7 +26,7 @@ clients. Since there is currently no server affinity for requests, the URL
 can point to a pool of servers:
 
 ```
-$ linksharing setup --defaults release --geo-location-db <PATH TO FILE> --public-url <PUBLIC URL> 
+$ linksharing setup --defaults release --geo-location-db <PATH TO FILE> --public-url <PUBLIC URL>
 ```
 
 **NOTE**: Please follow this link for instructions how to install/download the geo-location database:
@@ -72,14 +72,13 @@ results in
 
 You can use your own domain and host your website on Tardigrade with the following setup.
 
-0. Upload your static site and other files to tardigrade using [Uplink](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli) 
-or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli). 
-   
+0. Upload your static site and other files to tardigrade using [Uplink](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli)
+or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli).
 
-1. Share an object or path to an object. 
+1. Share an object or path to an object.
    If you are sharing an entire bucket or sub-folder, you will want to name your home page index.html.
    Anything shared with `--dns` will be readonly and available publicly (no secret key needed).
-   
+
    `uplink share --dns <hostname> sj://<path>`
 
    Prints a zone file with the information needed to create 3 dns records. Remember to update the $ORIGIN with your domain name. You may also change the $TTL.
@@ -101,23 +100,25 @@ or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). D
    ```
 
 2. Create a CNAME record on your hostname using our linksharing common URL `link.tardigradeshare.io.` as the target name.
- 
+
     <img src="docs/images/cname.png" width="50%">
 
 3. Create 2 TXT records, prepending `txt-` to your hostname.
-    
+
     a. Root Path: the bucket, object prefix key, or individual object that you want your root domain to resolve to.
-    
+
     <img src="docs/images/root.png" width="50%">
-    
+
     b. Access Key: the readonly and public access key to your root path.
- 
+
     <img src="docs/images/access.png" width="50%">
 
-4. You can check to make sure your dns records are ready with `dig @1.1.1.1 txt-<hostname>.<domain> TXT`        
-    
+4. You can check to make sure your dns records are ready with `dig @1.1.1.1 txt-<hostname>.<domain> TXT`
+
 5. Without further action, your site will be served with http. You can secure your site by using a https proxy server such as [Cloudflare](https://www.cloudflare.com/)
 
-6. That's it! You should be all set to access your website e.g. `http://www.example.test`
+6. Optionally, if you create a page titled '404.html' in the root of your shared prefix, it will be served in 404 conditions.
+
+7. That's it! You should be all set to access your website e.g. `http://www.example.test`
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
