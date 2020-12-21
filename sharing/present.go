@@ -48,9 +48,31 @@ func (handler *Handler) present(ctx context.Context, w http.ResponseWriter, r *h
 		if err == nil {
 			return handler.showObject(ctx, w, r, pr, project, o)
 		}
-		if !strings.HasSuffix(pr.realKey, "/") || !errors.Is(err, uplink.ErrObjectNotFound) {
-			// the requested key does not end in a slash, or there was an unknown error
+		if !errors.Is(err, uplink.ErrObjectNotFound) {
 			return WithAction(err, "stat object")
+		}
+		if !strings.HasSuffix(pr.realKey, "/") {
+			objNotFoundErr := WithAction(err, "stat object")
+
+			// s3 has interesting behavior, which is if the object doesn't exist,
+			// but is a prefix, it will issue a redirect to have a trailing slash.
+			// we need to do a brief list to find out if this object is a prefix.
+			it := project.ListObjects(ctx, pr.bucket, &uplink.ListObjectsOptions{
+				Prefix:    pr.realKey + "/",
+				Recursive: true, // this is actually easier on the database if we don't page more than once
+			})
+			isPrefix := it.Next() // are there any objects with this prefix?
+			err := it.Err()
+			if err != nil {
+				return WithAction(err, "prefix determination")
+			}
+
+			if isPrefix {
+				http.Redirect(w, r, r.URL.Path+"/", http.StatusSeeOther)
+				return nil
+			}
+
+			return objNotFoundErr
 		}
 	}
 
