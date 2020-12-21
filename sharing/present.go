@@ -181,8 +181,9 @@ func (handler *Handler) isPrefix(ctx context.Context, project *uplink.Project, p
 	isPrefix := it.Next() // are there any objects with this prefix?
 	err = it.Err()
 	if err != nil {
-		// TODO: we need to convert list permission failures to false, nil returns
-		// once uplink has an ErrPermissionDenied or something.
+		if errors.Is(err, uplink.ErrPermissionDenied) {
+			return false, nil
+		}
 		return false, WithAction(err, "prefix determination list")
 	}
 	return isPrefix, nil

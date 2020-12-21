@@ -147,6 +147,10 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusNotFound
 		message = "Oops! Object not found."
 		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrPermissionDenied):
+		status = http.StatusForbidden
+		message = "Access denied."
+		skipLog = true
 	default:
 		status = GetStatus(handlerErr, status)
 		switch status {
