@@ -60,17 +60,11 @@ func (handler *Handler) presentWithProject(ctx context.Context, w http.ResponseW
 		if !strings.HasSuffix(pr.realKey, "/") {
 			objNotFoundErr := WithAction(err, "stat object")
 
-			// s3 has interesting behavior, which is if the object doesn't exist,
+			// s3 has interesting behavior, which is if the object doesn't exist
 			// but is a prefix, it will issue a redirect to have a trailing slash.
-			// we need to do a brief list to find out if this object is a prefix.
-			it := project.ListObjects(ctx, pr.bucket, &uplink.ListObjectsOptions{
-				Prefix:    pr.realKey + "/",
-				Recursive: true, // this is actually easier on the database if we don't page more than once
-			})
-			isPrefix := it.Next() // are there any objects with this prefix?
-			err := it.Err()
+			isPrefix, err := handler.isPrefix(ctx, project, pr)
 			if err != nil {
-				return WithAction(err, "prefix determination")
+				return err
 			}
 
 			if isPrefix {
@@ -166,4 +160,30 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 		Title: pr.title,
 	})
 	return nil
+}
+
+func (handler *Handler) isPrefix(ctx context.Context, project *uplink.Project, pr *parsedRequest) (bool, error) {
+	// we might not having listing permission. if this is the case,
+	// guess that we're looking for an index.html and look for that.
+	_, err := project.StatObject(ctx, pr.bucket, pr.realKey+"/index.html")
+	if err == nil {
+		return true, nil
+	}
+	if !errors.Is(err, uplink.ErrObjectNotFound) {
+		return false, WithAction(err, "prefix determination stat")
+	}
+
+	// we need to do a brief list to find out if this object is a prefix.
+	it := project.ListObjects(ctx, pr.bucket, &uplink.ListObjectsOptions{
+		Prefix:    pr.realKey + "/",
+		Recursive: true, // this is actually easier on the database if we don't page more than once
+	})
+	isPrefix := it.Next() // are there any objects with this prefix?
+	err = it.Err()
+	if err != nil {
+		// TODO: we need to convert list permission failures to false, nil returns
+		// once uplink has an ErrPermissionDenied or something.
+		return false, WithAction(err, "prefix determination list")
+	}
+	return isPrefix, nil
 }
