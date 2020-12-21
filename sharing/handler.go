@@ -18,8 +18,10 @@ import (
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
+	"storj.io/common/rpc"
 	"storj.io/linksharing/objectmap"
 	"storj.io/uplink"
+	"storj.io/uplink/private/transport"
 )
 
 var mon = monkit.Package()
@@ -61,6 +63,9 @@ type Config struct {
 
 	// LandingRedirectTarget is the url to redirect empty requests to.
 	LandingRedirectTarget string
+
+	// uplink Config settings
+	Uplink *uplink.Config
 }
 
 // Handler implements the link sharing HTTP handler.
@@ -75,6 +80,7 @@ type Handler struct {
 	authConfig      AuthServiceConfig
 	static          http.Handler
 	landingRedirect string
+	uplink          *uplink.Config
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -94,6 +100,17 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		return nil, err
 	}
 
+	uplinkConfig := config.Uplink
+	if uplinkConfig == nil {
+		uplinkConfig = &uplink.Config{}
+	}
+
+	err = transport.SetConnectionPool(context.TODO(), uplinkConfig,
+		rpc.NewDefaultConnectionPool())
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
 		log:             log,
 		urlBase:         urlBase,
@@ -103,6 +120,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		authConfig:      config.AuthServiceConfig,
 		static:          http.StripPrefix("/static/", http.FileServer(http.Dir(config.StaticSourcesPath))),
 		landingRedirect: config.LandingRedirectTarget,
+		uplink:          uplinkConfig,
 	}, nil
 }
 

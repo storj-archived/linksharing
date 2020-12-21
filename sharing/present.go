@@ -33,7 +33,7 @@ type parsedRequest struct {
 func (handler *Handler) present(ctx context.Context, w http.ResponseWriter, r *http.Request, pr *parsedRequest) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	project, err := uplink.OpenProject(ctx, pr.access)
+	project, err := handler.uplink.OpenProject(ctx, pr.access)
 	if err != nil {
 		return WithAction(err, "open project")
 	}

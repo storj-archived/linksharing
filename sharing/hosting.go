@@ -36,7 +36,7 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 
 	bucket, key := determineBucketAndObjectKey(root, r.URL.Path)
 
-	project, err := uplink.OpenProject(ctx, access)
+	project, err := handler.uplink.OpenProject(ctx, access)
 	if err != nil {
 		return WithAction(err, "open project")
 	}
