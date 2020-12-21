@@ -216,6 +216,12 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 			body:   "foo",
 		},
 		{
+			name:   "GET prefix listing empty",
+			method: "GET",
+			path:   path.Join("s", serializedAccess, "testbucket", "test-empty") + "/",
+			status: http.StatusNotFound,
+		},
+		{
 			name:   "GET prefix redirect",
 			method: "GET",
 			path:   path.Join("s", serializedAccess, "testbucket", "test"),

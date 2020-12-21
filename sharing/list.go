@@ -74,6 +74,10 @@ func (handler *Handler) servePrefix(ctx context.Context, w http.ResponseWriter, 
 		return WithAction(err, "list objects")
 	}
 
+	if len(input.Objects) == 0 {
+		return WithAction(uplink.ErrObjectNotFound, "serve prefix - empty")
+	}
+
 	handler.renderTemplate(w, "prefix-listing.html", pageData{
 		Data:  input,
 		Title: pr.title,
