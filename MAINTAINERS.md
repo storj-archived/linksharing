@@ -7,8 +7,8 @@ available.
 
 New version should not be released if we want to test our latest changes or to
 make them available to a limited number of users. This can be achieved without
-releasing a new version, e.g. by compiling the binary from latest master or
-specific Git commit. However, commits from master are not suitable for use in
+releasing a new version, e.g. by compiling the binary from latest main or
+specific Git commit. However, commits from main are not suitable for use in
 production unless they are a release tag.
 
 Consider releasing a new Release Candidate version to make changes available to
