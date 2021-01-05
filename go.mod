@@ -19,7 +19,7 @@ require (
 	golang.org/x/sys v0.0.0-20200929083018-4d22bbb62b3c // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.0.0-20200428211428-0c9eba77bc32 // indirect
-	storj.io/common v0.0.0-20201207172416-78f4e59925c3
-	storj.io/private v0.0.0-20201126162939-6fbb1e924f51
-	storj.io/uplink v1.4.3
+	storj.io/common v0.0.0-20210104180112-e8500e1c37a0
+	storj.io/private v0.0.0-20201228213754-8d9c4e216479
+	storj.io/uplink v1.4.4
 )
