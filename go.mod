@@ -21,5 +21,5 @@ require (
 	golang.org/x/tools v0.0.0-20200428211428-0c9eba77bc32 // indirect
 	storj.io/common v0.0.0-20210104180112-e8500e1c37a0
 	storj.io/private v0.0.0-20201228213754-8d9c4e216479
-	storj.io/uplink v1.4.4
+	storj.io/uplink v1.4.5-0.20210107155327-9c8f5611fecf
 )

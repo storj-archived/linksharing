@@ -192,8 +192,8 @@ clean-images:
 
 .PHONY: bump-dependencies
 bump-dependencies:
-	go get storj.io/common@main storj.io/private@main storj.io/uplink@main
+	go get storj.io/common@main storj.io/private@main storj.io/uplink@multipart-upload
 	go mod tidy
 	cd testsuite;\
-		go get storj.io/common@main storj.io/storj@main;\
+		go get storj.io/common@main storj.io/storj@multipart-upload;\
 		go mod tidy
