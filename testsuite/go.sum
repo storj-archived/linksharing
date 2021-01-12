@@ -790,3 +790,4 @@ storj.io/uplink v1.4.3 h1:xtAGDuOV++JOscOhvlUV/3PTpxFF88FkIXCvVfoMtm4=
 storj.io/uplink v1.4.3/go.mod h1:VoxYTP5AzJ+gnzsqptuB5Ra8Old+fVVbwLCmi4jr5y4=
 storj.io/uplink v1.4.4-0.20210105093507-231a6acbe051 h1:FX8m1XWyDqCjyAPb9bx2MlxYQMu1jGwJgnH4jN3QTxc=
 storj.io/uplink v1.4.4-0.20210105093507-231a6acbe051/go.mod h1:VoxYTP5AzJ+gnzsqptuB5Ra8Old+fVVbwLCmi4jr5y4=
+storj.io/uplink v1.4.5-0.20210107155327-9c8f5611fecf/go.mod h1:raBVCBf1/DwfkFNzKqjSKLPysk9+o8Ubt/LJIO9TVBw=
