@@ -131,7 +131,7 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 	locations := make([]location, 0, len(ipBytes))
 	if handler.mapper != nil {
 		for _, ip := range ipBytes {
-			info, err := handler.mapper.GetIPInfos(string(ip))
+			info, err := handler.mapper.GetIPInfos(ctx, string(ip))
 			if err != nil {
 				handler.log.Error("failed to get IP info", zap.Error(err))
 				continue
