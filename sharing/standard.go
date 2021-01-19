@@ -67,12 +67,7 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 	// flag used for get locations request.
 	locationsFlag := queryFlagLookup(q, "locations", false)
 	if locationsFlag {
-		err = handler.serveLocations(ctx, w, pr)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return handler.serveLocations(ctx, w, pr)
 	}
 
 	pr.visibleKey = pr.realKey
