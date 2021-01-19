@@ -16,7 +16,6 @@ import (
 	"storj.io/common/ranger/httpranger"
 	"storj.io/linksharing/objectranger"
 	"storj.io/uplink"
-	"storj.io/uplink/private/object"
 )
 
 type parsedRequest struct {
@@ -99,6 +98,7 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 	defer mon.Task()(&ctx)(&err)
 
 	q := r.URL.Query()
+
 	// if someone provides the 'download' flag on or off, we do that, otherwise
 	// we do what the downloadDefault was (based on the URL scope).
 	download := queryFlagLookup(q, "download", pr.downloadDefault)
@@ -116,44 +116,12 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 		return nil
 	}
 
-	ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, pr.access, pr.bucket, o.Key)
-	if err != nil {
-		return WithAction(err, "get object IPs")
-	}
-
-	type location struct {
-		Latitude  float64
-		Longitude float64
-	}
-
-	// we explicitly don't want locations to be nil, so it doesn't
-	// render as null when we plop it into the output javascript.
-	locations := make([]location, 0, len(ipBytes))
-	if handler.mapper != nil {
-		for _, ip := range ipBytes {
-			info, err := handler.mapper.GetIPInfos(ctx, string(ip))
-			if err != nil {
-				handler.log.Error("failed to get IP info", zap.Error(err))
-				continue
-			}
-
-			locations = append(locations, location{
-				Latitude:  info.Location.Latitude,
-				Longitude: info.Location.Longitude,
-			})
-		}
-	}
-
 	var input struct {
-		Key       string
-		Size      string
-		Locations []location
-		Pieces    int64
+		Key  string
+		Size string
 	}
 	input.Key = filepath.Base(o.Key)
 	input.Size = memory.Size(o.System.ContentLength).Base10String()
-	input.Locations = locations
-	input.Pieces = int64(len(locations))
 
 	handler.renderTemplate(w, "single-object.html", pageData{
 		Data:  input,
