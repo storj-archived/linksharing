@@ -4,12 +4,16 @@
 package objectmap
 
 import (
+	"context"
 	"net"
 	"strings"
 	"sync"
 
+	"github.com/spacemonkeygo/monkit/v3"
 	"github.com/zeebo/errs"
 )
+
+var mon = monkit.Package()
 
 // Error is the default error class for objectmap.
 var Error = errs.Class("objectmap error")
@@ -34,23 +38,27 @@ type Reader interface {
 	Close() error
 }
 
+type cachedInfo struct {
+	Error error
+	IP    net.IP
+	IPInfo
+}
+
 // IPDB holds the database file path and its reader.
 //
 // architecture: Database
 type IPDB struct {
 	reader Reader
 
-	mu        sync.Mutex
-	cachedIPs map[string]IPInfo
+	mu        sync.RWMutex
+	cachedIPs map[string]cachedInfo
 }
 
 // NewIPDB creates a new IPMapper instance.
 func NewIPDB(reader Reader) *IPDB {
-	cachedIPs := make(map[string]IPInfo)
-
 	return &IPDB{
-		cachedIPs: cachedIPs,
 		reader:    reader,
+		cachedIPs: make(map[string]cachedInfo),
 	}
 }
 
@@ -62,19 +70,22 @@ func (mapper *IPDB) Close() (err error) {
 	return nil
 }
 
-// ValidateIP validate and remove port from IP address.
-func ValidateIP(ipAddress string) (net.IP, error) {
-	if strings.Count(ipAddress, ":") > 1 {
-		return nil, errs.New("IPv6 addresses are ignored for now: %s", ipAddress)
+// lookupHost validate and remove port from IP address.
+func (mapper *IPDB) lookupHost(ctx context.Context, hostOrIP string) (_ net.IP, err error) {
+	defer mon.Task()(&ctx)(&err)
+
+	if strings.Count(hostOrIP, ":") > 1 {
+		return nil, errs.New("IPv6 addresses are ignored for now: %s", hostOrIP)
 	}
 
-	ip, _, err := net.SplitHostPort(ipAddress)
+	ip, _, err := net.SplitHostPort(hostOrIP)
 	if err != nil {
-		ip = ipAddress // assume it had no port
+		ip = hostOrIP // assume it had no port
 	}
 
 	parsed := net.ParseIP(ip)
 	if parsed == nil {
+		// TODO: remove once, satellite has been updated.
 		tmpParsed, err := net.LookupHost(ip)
 		if err != nil {
 			return nil, errs.New("invalid IP address: %s", ip)
@@ -85,25 +96,48 @@ func ValidateIP(ipAddress string) (net.IP, error) {
 }
 
 // GetIPInfos returns the geolocation information from an IP address.
-func (mapper *IPDB) GetIPInfos(ipAddress string) (_ *IPInfo, err error) {
-	var record IPInfo
+func (mapper *IPDB) GetIPInfos(ctx context.Context, hostOrIP string) (_ *IPInfo, err error) {
+	defer mon.Task()(&ctx)(&err)
 
-	parsed, err := ValidateIP(ipAddress)
+	mapper.mu.RLock()
+	cacheItem, ok := mapper.cachedIPs[hostOrIP]
+	mapper.mu.RUnlock()
+
+	if ok {
+		if cacheItem.Error != nil {
+			return nil, cacheItem.Error
+		}
+		return &cacheItem.IPInfo, nil
+	}
+
+	parsed, err := mapper.lookupHost(ctx, hostOrIP)
 	if err != nil {
+		mapper.mu.Lock()
+		mapper.cachedIPs[hostOrIP] = cachedInfo{
+			Error: err,
+		}
+		mapper.mu.Unlock()
+		return nil, Error.Wrap(err)
+	}
+
+	var record IPInfo
+	err = mapper.reader.Lookup(parsed, &record)
+	if err != nil {
+		mapper.mu.Lock()
+		mapper.cachedIPs[hostOrIP] = cachedInfo{
+			Error: err,
+			IP:    parsed,
+		}
+		mapper.mu.Unlock()
 		return nil, Error.Wrap(err)
 	}
 
 	mapper.mu.Lock()
-	defer mapper.mu.Unlock()
-	record, ok := mapper.cachedIPs[string(parsed)]
-	if !ok {
-		err = mapper.reader.Lookup(parsed, &record)
-		if err != nil {
-			return nil, Error.Wrap(err)
-		}
-
-		mapper.cachedIPs[string(parsed)] = record
+	mapper.cachedIPs[hostOrIP] = cachedInfo{
+		IP:     parsed,
+		IPInfo: record,
 	}
+	mapper.mu.Unlock()
 
 	return &record, nil
 }

@@ -131,16 +131,16 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 			Longitude float64
 		}
 
-		// we explicitly don't want locations to be nil, so it doesn't
-		// render as null when we plop it into the output javascript.
-		locations := make([]location, 0, len(ipBytes))
-		if handler.mapper != nil {
-			for _, ip := range ipBytes {
-				info, err := handler.mapper.GetIPInfos(string(ip))
-				if err != nil {
-					handler.log.Error("failed to get IP info", zap.Error(err))
-					continue
-				}
+	// we explicitly don't want locations to be nil, so it doesn't
+	// render as null when we plop it into the output javascript.
+	locations := make([]location, 0, len(ipBytes))
+	if handler.mapper != nil {
+		for _, ip := range ipBytes {
+			info, err := handler.mapper.GetIPInfos(ctx, string(ip))
+			if err != nil {
+				handler.log.Error("failed to get IP info", zap.Error(err))
+				continue
+			}
 
 				locations = append(locations, location{
 					Latitude:  info.Location.Latitude,

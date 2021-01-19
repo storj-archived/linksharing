@@ -13,6 +13,7 @@ import (
 )
 
 func TestIPDB_GetIPInfos(t *testing.T) {
+	ctx := context.Background()
 	mockReader := &MockReader{}
 
 	tests := []struct {
@@ -33,7 +34,7 @@ func TestIPDB_GetIPInfos(t *testing.T) {
 		mapper := NewIPDB(tt.reader)
 		testCase := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := mapper.GetIPInfos(testCase.ipAddress)
+			got, err := mapper.GetIPInfos(ctx, testCase.ipAddress)
 
 			if testCase.expectedErr {
 				require.Error(t, err)
@@ -48,6 +49,8 @@ func TestIPDB_GetIPInfos(t *testing.T) {
 }
 
 func TestIPDB_GetIPInfos_Concurrent(t *testing.T) {
+	ctx := context.Background()
+
 	mockReader := &MockReader{}
 	mapper := NewIPDB(mockReader)
 
@@ -78,14 +81,14 @@ func TestIPDB_GetIPInfos_Concurrent(t *testing.T) {
 		ip := ip
 		t.Run(ip, func(t *testing.T) {
 			group.Go(func() error {
-				ipInfo, err := mapper.GetIPInfos(ip)
+				ipInfo, err := mapper.GetIPInfos(ctx, ip)
 
 				assert.NoError(t, err)
 				assert.NotNil(t, ipInfo)
 				return nil
 			})
 			group.Go(func() error {
-				ipInfo, err := mapper.GetIPInfos(ip)
+				ipInfo, err := mapper.GetIPInfos(ctx, ip)
 
 				assert.NoError(t, err)
 				assert.NotNil(t, ipInfo)
@@ -98,14 +101,14 @@ func TestIPDB_GetIPInfos_Concurrent(t *testing.T) {
 		ip := ip
 		t.Run(ip, func(t *testing.T) {
 			group.Go(func() error {
-				ipInfo, err := mapper.GetIPInfos(ip)
+				ipInfo, err := mapper.GetIPInfos(ctx, ip)
 
 				assert.Error(t, err)
 				assert.Nil(t, ipInfo)
 				return nil
 			})
 			group.Go(func() error {
-				ipInfo, err := mapper.GetIPInfos(ip)
+				ipInfo, err := mapper.GetIPInfos(ctx, ip)
 
 				assert.Error(t, err)
 				assert.Nil(t, ipInfo)
@@ -117,5 +120,5 @@ func TestIPDB_GetIPInfos_Concurrent(t *testing.T) {
 	err := group.Wait()
 	require.NoError(t, err)
 
-	require.Equal(t, 10, len(mapper.cachedIPs))
+	require.Equal(t, 15, len(mapper.cachedIPs))
 }
