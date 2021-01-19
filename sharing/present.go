@@ -5,7 +5,6 @@ package sharing
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 	"storj.io/common/ranger/httpranger"
 	"storj.io/linksharing/objectranger"
 	"storj.io/uplink"
-	"storj.io/uplink/private/object"
 )
 
 type parsedRequest struct {
@@ -101,8 +99,6 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 
 	q := r.URL.Query()
 
-	// flag used for get locations request.
-	locationsFlag := queryFlagLookup(q, "locations", false)
 	// if someone provides the 'download' flag on or off, we do that, otherwise
 	// we do what the downloadDefault was (based on the URL scope).
 	download := queryFlagLookup(q, "download", pr.downloadDefault)
@@ -117,45 +113,6 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 	}
 	if download || !wrap {
 		httpranger.ServeContent(ctx, w, r, o.Key, o.System.Created, objectranger.New(project, o, pr.bucket))
-		return nil
-	}
-
-	if locationsFlag {
-		ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, pr.access, pr.bucket, o.Key)
-		if err != nil {
-			return WithAction(err, "get object IPs")
-		}
-
-		type location struct {
-			Latitude  float64
-			Longitude float64
-		}
-
-	// we explicitly don't want locations to be nil, so it doesn't
-	// render as null when we plop it into the output javascript.
-	locations := make([]location, 0, len(ipBytes))
-	if handler.mapper != nil {
-		for _, ip := range ipBytes {
-			info, err := handler.mapper.GetIPInfos(ctx, string(ip))
-			if err != nil {
-				handler.log.Error("failed to get IP info", zap.Error(err))
-				continue
-			}
-
-				locations = append(locations, location{
-					Latitude:  info.Location.Latitude,
-					Longitude: info.Location.Longitude,
-				})
-			}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-
-		err = json.NewEncoder(w).Encode(locations)
-		if err != nil {
-			handler.log.Error("failed to write json list locations response", zap.Error(err))
-		}
-
 		return nil
 	}
 
