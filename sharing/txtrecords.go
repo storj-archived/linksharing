@@ -46,7 +46,9 @@ func newTxtRecords(maxTTL time.Duration, dns *DNSClient, auth AuthServiceConfig)
 
 // fetchAccessForHost fetches the root and access grant from the cache or dns server when applicable.
 func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string) (access *uplink.Access, root string, err error) {
-	record, exists := records.fromCache(hostname)
+	defer mon.Task()(&ctx)(&err)
+
+	record, exists := records.fromCache(ctx, hostname)
 	if exists {
 		return record.access, record.root, nil
 	}
@@ -55,13 +57,15 @@ func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname stri
 	if err != nil {
 		return access, root, err
 	}
-	records.updateCache(hostname, root, access, ttl)
+	records.updateCache(ctx, hostname, root, access, ttl)
 
 	return access, root, err
 }
 
 // fromCache checks the txt record cache to see if we have a valid access grant and root path.
-func (records *txtRecords) fromCache(hostname string) (record txtRecord, exists bool) {
+func (records *txtRecords) fromCache(ctx context.Context, hostname string) (record txtRecord, exists bool) {
+	defer mon.Task()(&ctx)(nil)
+
 	records.mu.RLock()
 	defer records.mu.RUnlock()
 
@@ -73,7 +77,9 @@ func (records *txtRecords) fromCache(hostname string) (record txtRecord, exists 
 }
 
 // updateCache updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
-func (records *txtRecords) updateCache(hostname, root string, access *uplink.Access, ttl time.Duration) {
+func (records *txtRecords) updateCache(ctx context.Context, hostname, root string, access *uplink.Access, ttl time.Duration) {
+	defer mon.Task()(&ctx)(nil)
+
 	records.mu.Lock()
 	defer records.mu.Unlock()
 
@@ -82,6 +88,8 @@ func (records *txtRecords) updateCache(hostname, root string, access *uplink.Acc
 
 // queryAccessFromDNS does an txt record lookup for the hostname on the dns server.
 func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Access, root string, ttl time.Duration, err error) {
+	defer mon.Task()(&ctx)(&err)
+
 	r, err := records.dns.Lookup(ctx, "txt-"+hostname, dns.TypeTXT)
 	if err != nil {
 		return nil, "", 0, errs.New("failure with hostname %q: %w", hostname, err)
