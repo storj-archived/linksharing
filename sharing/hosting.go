@@ -46,11 +46,18 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}()
 
+	visibleKey := strings.TrimPrefix(r.URL.Path, "/")
+	if visibleKey == "" {
+		// special case: if someone is looking for http://sub.domain.tld/,
+		// explicitly assume they shared a prefix and are looking for index.html
+		key += "index.html"
+	}
+
 	err = handler.presentWithProject(ctx, w, r, &parsedRequest{
 		access:      access,
 		bucket:      bucket,
 		realKey:     key,
-		visibleKey:  strings.TrimPrefix(r.URL.Path, "/"),
+		visibleKey:  visibleKey,
 		title:       host,
 		root:        breadcrumb{Prefix: host, URL: "/"},
 		wrapDefault: false,
