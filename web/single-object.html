@@ -166,7 +166,7 @@
 
   window.onload = async function () {
       const fileSize = {{.Data.SizeNumber}} || 0;
-      const FOUR_KB = 4048;
+      const FOUR_KB = 4096;
       const isLittleFile = fileSize < FOUR_KB
 
       let mymap = L.map('mapid').setView([35, 10], 1.2);
