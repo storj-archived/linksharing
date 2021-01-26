@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
 	"storj.io/common/memory"
@@ -48,6 +49,27 @@ func (handler *Handler) present(ctx context.Context, w http.ResponseWriter, r *h
 func (handler *Handler) presentWithProject(ctx context.Context, w http.ResponseWriter, r *http.Request, pr *parsedRequest, project *uplink.Project) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
+	// first, kick off background index.html request, if appropriate. we do this
+	// to cut down on sequential round trips.
+	type statResult struct {
+		obj *uplink.Object
+		err error
+	}
+	// make sure indexResult is buffered because we might be throwing this
+	// stat object result away entirely.
+	indexResultCh := make(chan statResult, 1)
+
+	if pr.realKey == "" || strings.HasSuffix(pr.realKey, "/") {
+		go func() {
+			obj, err := project.StatObject(ctx, pr.bucket, pr.realKey+"index.html")
+			indexResultCh <- statResult{obj: obj, err: err}
+		}()
+	} else {
+		// make sure we've always sent a result
+		indexResultCh <- statResult{err: errs.New(
+			"unreachable, index.html lookup incorrectly expected")}
+	}
+
 	if pr.realKey != "" { // there are no objects with the empty key
 		o, err := project.StatObject(ctx, pr.bucket, pr.realKey)
 		if err == nil {
@@ -75,20 +97,15 @@ func (handler *Handler) presentWithProject(ctx context.Context, w http.ResponseW
 		}
 	}
 
-	// due to the above logic, by this point, the key is either exactly "" or ends in a "/"
-
-	o, err := project.StatObject(ctx, pr.bucket, pr.realKey+"index.html")
+	// due to the above logic, if we reach this, the key is either exactly "" or ends in a "/",
+	// so we should be able to read the index.html StatObject channel
+	indexResult := <-indexResultCh
+	o, err := indexResult.obj, indexResult.err
 	if err == nil {
 		return handler.showObject(ctx, w, r, pr, project, o)
 	}
 	if !errors.Is(err, uplink.ErrObjectNotFound) {
 		return WithAction(err, "stat object - index.html")
-	}
-
-	if !strings.HasSuffix(r.URL.Path, "/") {
-		// Call redirect because directories must have a trailing '/' for the listed hyperlinks to generate correctly.
-		http.Redirect(w, r, r.URL.Path+"/", http.StatusSeeOther)
-		return nil
 	}
 
 	return handler.servePrefix(ctx, w, project, pr)
