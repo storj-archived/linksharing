@@ -6,6 +6,7 @@ package sharing
 import (
 	"net/url"
 	"strings"
+	"sync"
 )
 
 // queryFlagLookup finds a boolean value in a url.Values struct, returning
@@ -32,4 +33,48 @@ func queryFlagLookup(q url.Values, name string, defValue bool) bool {
 		return false
 	}
 	return true
+}
+
+// MutexGroup is a group of mutexes by name that attempts to only keep track of
+// live mutexes. The zero value is okay to use.
+type MutexGroup struct {
+	mu      sync.Mutex
+	names   map[string]*sync.Mutex
+	waiters map[string]int
+}
+
+func (m *MutexGroup) init(name string) {
+	if m.names == nil {
+		m.names = map[string]*sync.Mutex{name: new(sync.Mutex)}
+		m.waiters = map[string]int{}
+		return
+	}
+	if _, exists := m.names[name]; !exists {
+		m.names[name] = &sync.Mutex{}
+	}
+}
+
+// Lock will lock the mutex named by name. It will return the appropriate
+// function to call to unlock that lock.
+func (m *MutexGroup) Lock(name string) (unlock func()) {
+	m.mu.Lock()
+	m.init(name)
+	namedMu := m.names[name]
+	m.waiters[name]++
+	m.mu.Unlock()
+	namedMu.Lock()
+	return func() {
+		namedMu.Unlock()
+		m.mu.Lock()
+		waiting := m.waiters[name] - 1
+		m.waiters[name] = waiting
+		if waiting <= 0 {
+			if waiting < 0 {
+				panic("double unlock")
+			}
+			delete(m.names, name)
+			delete(m.waiters, name)
+		}
+		m.mu.Unlock()
+	}
 }
