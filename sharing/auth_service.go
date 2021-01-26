@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/zeebo/errs"
 )
@@ -47,24 +48,38 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 	}
 	req.Header.Set("Authorization", "Bearer "+a.Token)
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, WithStatus(AuthServiceError.Wrap(err),
-			http.StatusInternalServerError)
+	delay := ExponentialBackoff{
+		Min: 100 * time.Millisecond,
+		Max: 5 * time.Second,
 	}
-	defer func() { _ = resp.Body.Close() }()
+	for {
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			if !delay.Maxed() {
+				delay.Wait()
+				continue
+			}
+			return nil, WithStatus(AuthServiceError.Wrap(err),
+				http.StatusInternalServerError)
+		}
+		defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, WithStatus(
-			AuthServiceError.New("invalid status code: %d", resp.StatusCode),
-			resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			return nil, WithStatus(
+				AuthServiceError.New("invalid status code: %d", resp.StatusCode),
+				resp.StatusCode)
+		}
+
+		var authResp AuthServiceResponse
+		if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+			if !delay.Maxed() {
+				delay.Wait()
+				continue
+			}
+			return nil, WithStatus(AuthServiceError.Wrap(err),
+				http.StatusInternalServerError)
+		}
+
+		return &authResp, nil
 	}
-
-	var authResp AuthServiceResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return nil, WithStatus(AuthServiceError.Wrap(err),
-			http.StatusInternalServerError)
-	}
-
-	return &authResp, nil
 }
