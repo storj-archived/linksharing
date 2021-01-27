@@ -19,8 +19,8 @@ type txtRecords struct {
 	dns    *DNSClient
 	auth   AuthServiceConfig
 
-	mu    sync.RWMutex
-	cache map[string]txtRecord
+	cache       sync.Map
+	updateLocks MutexGroup
 }
 
 type txtRecord struct {
@@ -41,58 +41,79 @@ func newTxtRecords(maxTTL time.Duration, dns *DNSClient, auth AuthServiceConfig)
 		maxTTL: maxTTL,
 		dns:    dns,
 		auth:   auth,
-		cache:  make(map[string]txtRecord)}
+	}
 }
 
 // fetchAccessForHost fetches the root and access grant from the cache or dns server when applicable.
 func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string) (access *uplink.Access, root string, err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	record, exists := records.fromCache(ctx, hostname)
-	if exists {
+	val, ok := records.cache.Load(hostname)
+	if !ok {
+		// nothing in the cache, we have to go do a dns lookup before
+		// we can return.
+		record, err := records.updateCache(ctx, hostname, time.Time{})
+		if err != nil {
+			return nil, "", err
+		}
 		return record.access, record.root, nil
 	}
 
-	access, root, ttl, err := records.queryAccessFromDNS(ctx, hostname)
+	// there's something in the cache!
+	record := val.(*txtRecord)
+	if record.expiration.Before(time.Now()) {
+		// but it's expired. okay, this happens a lot and is usually going to
+		// return the same value. we're going to be optimistic and assume the
+		// value is right and return the expired value, but update the cache
+		// in the background.
+		// the user experience if the dns entry changes is that the user will
+		// have to trigger a page load after the TTL expires to flush the
+		// cache, but usually users test their pages after making changes, so
+		// this should in practice be totally fine.
+		// this strategy saves us the initial dns request round trip most
+		// times.
+		go func(ctx context.Context, hostname string, record *txtRecord) {
+			_, _ = records.updateCache(ctx, hostname, record.expiration)
+		}(ctx, hostname, record)
+	}
+
+	return record.access, record.root, nil
+}
+
+// updateCache will attempt to fetch and update the dns record for the given hostname.
+// if there is a failure, updateCache will clear the cache and return the error.
+// if currentExpiration is nil, updateCache will do nothing if there is already a
+// cached value. if currentExpiration is set, updateCache will do nothing if the
+// currently cached expiration is different than currentExpiration.
+func (records *txtRecords) updateCache(ctx context.Context, hostname string, currentExpiration time.Time) (record *txtRecord, err error) {
+	defer mon.Task()(&ctx)(&err)
+	defer records.updateLocks.Lock(hostname)()
+
+	// check if the call to us raced with another updateCache.
+	if val, ok := records.cache.Load(hostname); ok {
+		record = val.(*txtRecord)
+		if currentExpiration.IsZero() || !record.expiration.Equal(currentExpiration) {
+			return record, nil
+		}
+	}
+
+	record, err = records.queryAccessFromDNS(ctx, hostname)
 	if err != nil {
-		return access, root, err
+		records.cache.Delete(hostname)
+		return record, err
 	}
-	records.updateCache(ctx, hostname, root, access, ttl)
 
-	return access, root, err
-}
-
-// fromCache checks the txt record cache to see if we have a valid access grant and root path.
-func (records *txtRecords) fromCache(ctx context.Context, hostname string) (record txtRecord, exists bool) {
-	defer mon.Task()(&ctx)(nil)
-
-	records.mu.RLock()
-	defer records.mu.RUnlock()
-
-	record, ok := records.cache[hostname]
-	if ok && !record.expiration.Before(time.Now()) {
-		return record, true
-	}
-	return record, false
-}
-
-// updateCache updates the txtRecord cache with the hostname and corresponding access, root, and time of update.
-func (records *txtRecords) updateCache(ctx context.Context, hostname, root string, access *uplink.Access, ttl time.Duration) {
-	defer mon.Task()(&ctx)(nil)
-
-	records.mu.Lock()
-	defer records.mu.Unlock()
-
-	records.cache[hostname] = txtRecord{access: access, root: root, expiration: time.Now().Add(ttl)}
+	records.cache.Store(hostname, record)
+	return record, nil
 }
 
 // queryAccessFromDNS does an txt record lookup for the hostname on the dns server.
-func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string) (access *uplink.Access, root string, ttl time.Duration, err error) {
+func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string) (record *txtRecord, err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	r, err := records.dns.Lookup(ctx, "txt-"+hostname, dns.TypeTXT)
 	if err != nil {
-		return nil, "", 0, errs.New("failure with hostname %q: %w", hostname, err)
+		return nil, errs.New("failure with hostname %q: %w", hostname, err)
 	}
 	set := ResponseToTXTRecordSet(r)
 
@@ -101,16 +122,21 @@ func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname stri
 		// backcompat
 		serializedAccess = set.Lookup("storj-grant")
 	}
-	root = set.Lookup("storj-root")
+	root := set.Lookup("storj-root")
 	if root == "" {
 		// backcompat
 		root = set.Lookup("storj-path")
 	}
 
-	access, err = parseAccess(ctx, serializedAccess, records.auth)
+	access, err := parseAccess(ctx, serializedAccess, records.auth)
 	if err != nil {
-		return nil, "", 0, errs.New("failure with hostname %q: %w", hostname, err)
+		return nil, errs.New("failure with hostname %q: %w", hostname, err)
 	}
 
-	return access, root, set.TTL(), nil
+	ttl := set.TTL()
+	if ttl > records.maxTTL {
+		ttl = records.maxTTL
+	}
+
+	return &txtRecord{access: access, root: root, expiration: time.Now().Add(ttl)}, nil
 }
