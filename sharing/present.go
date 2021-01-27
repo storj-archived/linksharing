@@ -134,13 +134,11 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	var input struct {
-		Key        string
-		Size       string
-		SizeNumber int64
+		Key  string
+		Size string
 	}
 	input.Key = filepath.Base(o.Key)
 	input.Size = memory.Size(o.System.ContentLength).Base10String()
-	input.SizeNumber = o.System.ContentLength
 
 	handler.renderTemplate(w, "single-object.html", pageData{
 		Data:  input,

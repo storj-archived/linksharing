@@ -212,17 +212,13 @@ p, span, a {
 #collectingPieces,
 #readyForDownload {
   margin-left: 8px;
+  white-space: nowrap;
 }
 
 #readyForDownload,
 #pieces,
 #smallFileMessage {
   display: none;
-}
-
-#warningIcon {
-  min-height: 40px;
-  min-width: 40px;
 }
 
 #smallFileMessage {
