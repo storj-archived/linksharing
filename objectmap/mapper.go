@@ -40,7 +40,6 @@ type Reader interface {
 
 type cachedInfo struct {
 	Error error
-	IP    net.IP
 	IPInfo
 }
 
@@ -70,31 +69,6 @@ func (mapper *IPDB) Close() (err error) {
 	return nil
 }
 
-// lookupHost validate and remove port from IP address.
-func (mapper *IPDB) lookupHost(ctx context.Context, hostOrIP string) (_ net.IP, err error) {
-	defer mon.Task()(&ctx)(&err)
-
-	if strings.Count(hostOrIP, ":") > 1 {
-		return nil, errs.New("IPv6 addresses are ignored for now: %s", hostOrIP)
-	}
-
-	ip, _, err := net.SplitHostPort(hostOrIP)
-	if err != nil {
-		ip = hostOrIP // assume it had no port
-	}
-
-	parsed := net.ParseIP(ip)
-	if parsed == nil {
-		// TODO: remove once, satellite has been updated.
-		tmpParsed, err := net.LookupHost(ip)
-		if err != nil {
-			return nil, errs.New("invalid IP address: %s", ip)
-		}
-		parsed = net.ParseIP(tmpParsed[0])
-	}
-	return parsed, nil
-}
-
 // GetIPInfos returns the geolocation information from an IP address.
 func (mapper *IPDB) GetIPInfos(ctx context.Context, hostOrIP string) (_ *IPInfo, err error) {
 	defer mon.Task()(&ctx)(&err)
@@ -110,34 +84,41 @@ func (mapper *IPDB) GetIPInfos(ctx context.Context, hostOrIP string) (_ *IPInfo,
 		return &cacheItem.IPInfo, nil
 	}
 
-	parsed, err := mapper.lookupHost(ctx, hostOrIP)
+	parsed, err := mapper.parseHost(hostOrIP)
 	if err != nil {
-		mapper.mu.Lock()
-		mapper.cachedIPs[hostOrIP] = cachedInfo{
-			Error: err,
-		}
-		mapper.mu.Unlock()
 		return nil, Error.Wrap(err)
 	}
 
 	var record IPInfo
 	err = mapper.reader.Lookup(parsed, &record)
-	if err != nil {
-		mapper.mu.Lock()
-		mapper.cachedIPs[hostOrIP] = cachedInfo{
-			Error: err,
-			IP:    parsed,
-		}
-		mapper.mu.Unlock()
-		return nil, Error.Wrap(err)
-	}
 
 	mapper.mu.Lock()
 	mapper.cachedIPs[hostOrIP] = cachedInfo{
-		IP:     parsed,
+		Error:  err,
 		IPInfo: record,
 	}
 	mapper.mu.Unlock()
 
+	if err != nil {
+		return nil, Error.Wrap(err)
+	}
 	return &record, nil
+}
+
+// parseHost validate and remove port from IP address.
+func (mapper *IPDB) parseHost(hostOrIP string) (_ net.IP, err error) {
+	if strings.Count(hostOrIP, ":") > 1 {
+		return nil, errs.New("IPv6 addresses are ignored for now: %s", hostOrIP)
+	}
+
+	ip, _, err := net.SplitHostPort(hostOrIP)
+	if err != nil {
+		ip = hostOrIP // assume it had no port
+	}
+
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return nil, errs.New("invalid IP address: %s", ip)
+	}
+	return parsed, nil
 }
