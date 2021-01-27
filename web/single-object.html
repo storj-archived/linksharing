@@ -36,6 +36,7 @@
                 </p>
                 <p class="mt-4"><strong>File Size:</strong> <span>{{.Data.Size}}</span></p>
                 <p id="pieces" class="mt-4"><strong>File Pieces:</strong> <span id="piecesNumber"></span></p>
+                <p id="piecesMessage">Due to fluctuations in the network the number of pieces displayed for your file may change</p>
               </div>
             </div>
           </div>
@@ -192,6 +193,8 @@
 
           if (!summary.pieceCount) {
               document.getElementById('smallFileMessage').style.display = 'flex';
+          } else {
+              document.getElementById('piecesMessage').style.display = 'block';
           }
       } catch (error) {
           console.log(error.message)
