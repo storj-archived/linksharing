@@ -120,5 +120,5 @@ func TestIPDB_GetIPInfos_Concurrent(t *testing.T) {
 	err := group.Wait()
 	require.NoError(t, err)
 
-	require.Equal(t, 15, len(mapper.cachedIPs))
+	require.Equal(t, 10, len(mapper.cachedIPs))
 }
