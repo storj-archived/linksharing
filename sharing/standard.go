@@ -78,9 +78,9 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 }
 
 func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWriter, pr parsedRequest) error {
-	ipBytes, err := object.GetObjectIPs(ctx, uplink.Config{}, pr.access, pr.bucket, pr.realKey)
+	ipSummary, err := object.GetObjectIPSummary(ctx, uplink.Config{}, pr.access, pr.bucket, pr.realKey)
 	if err != nil {
-		return WithAction(err, "get object IPs")
+		return WithAction(err, "get object IPs summary")
 	}
 
 	type location struct {
@@ -90,9 +90,9 @@ func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWrite
 
 	// we explicitly don't want locations to be nil, so it doesn't
 	// render as null when we plop it into the output javascript.
-	locations := make([]location, 0, len(ipBytes))
+	locations := make([]location, 0, len(ipSummary.IPPorts))
 	if handler.mapper != nil {
-		for _, ip := range ipBytes {
+		for _, ip := range ipSummary.IPPorts {
 			info, err := handler.mapper.GetIPInfos(ctx, string(ip))
 			if err != nil {
 				handler.log.Error("failed to get IP info", zap.Error(err))
@@ -106,9 +106,17 @@ func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWrite
 		}
 	}
 
+	type locSummary struct {
+		Locations  []location `json:"locations"`
+		PieceCount int64      `json:"pieceCount"`
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(locations)
+	err = json.NewEncoder(w).Encode(locSummary{
+		Locations:  locations,
+		PieceCount: ipSummary.PieceCount,
+	})
 	if err != nil {
 		handler.log.Error("failed to write json list locations response", zap.Error(err))
 	}

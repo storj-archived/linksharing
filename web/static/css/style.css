@@ -206,16 +206,33 @@ p, span, a {
 .status {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 #collectingPieces,
 #readyForDownload {
   margin-left: 8px;
+  white-space: nowrap;
 }
 
 #readyForDownload,
-#pieces {
+#pieces,
+#smallFileMessage,
+#piecesMessage {
   display: none;
+}
+
+#smallFileMessage {
+  border: 2px solid yellow;
+  background-color: rgba(255, 255, 0, 0.2);
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 8px;
+  align-items: center;
+}
+
+#piecesMessage {
+  font-size: 13px;
 }
 
 /* Share modal */

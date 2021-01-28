@@ -18,6 +18,9 @@
             <div class="row">
               <div class="col text-center mb-4 mt-3 mt-lg-0">
                 <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Data.Key}}</span> on Tardigrade</h6>
+                <div id="smallFileMessage" class="row flex-nowrap text-left">
+                  <p class="mb-0">Files under 4kb are too small to distribute on the network. They are stored as metadata on the satellite you use with the same level of encryption as any other file.</p>
+                </div>
               </div>
             </div>
             <div class="row">
@@ -26,13 +29,14 @@
                 <!-- Map is loaded here -->
               </div>
               <div class="col-12 col-lg-4 text-center text-lg-left">
-                <p class="mt-4 status">
+                <p class="mt-4 justify-content-lg-start status">
                   <strong>Status:</strong>
                   <span id="collectingPieces">Collecting pieces...</span>
                   <span id="readyForDownload">Ready for download</span>
                 </p>
                 <p class="mt-4"><strong>File Size:</strong> <span>{{.Data.Size}}</span></p>
                 <p id="pieces" class="mt-4"><strong>File Pieces:</strong> <span id="piecesNumber"></span></p>
+                <p id="piecesMessage">Due to fluctuations in the network the number of pieces displayed for your file may change</p>
               </div>
             </div>
           </div>
@@ -128,7 +132,7 @@
     document.getElementById("copyNotification").style.display = "block"
   }
 
-  async function getLocations() {
+  async function getLocationsSummary() {
       const path = `${window.location.pathname}?locations`;
       const request = {
           method: 'GET',
@@ -182,7 +186,14 @@
 
       let routes = []
       try {
-          routes = await getLocations()
+          const summary = await getLocationsSummary();
+
+          routes = summary.locations;
+          document.getElementById('piecesNumber').innerText = summary.pieceCount;
+
+          if (!summary.pieceCount) {
+              document.getElementById('smallFileMessage').style.display = 'flex';
+          }
       } catch (error) {
           console.log(error.message)
       }
@@ -205,7 +216,6 @@
       document.getElementById('collectingPieces').style.display = 'none';
       document.getElementById('readyForDownload').style.display = 'block';
       document.getElementById('pieces').style.display = 'block';
-      document.getElementById('piecesNumber').innerText = routes.length;
   }
 </script>
 
