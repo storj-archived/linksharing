@@ -71,6 +71,7 @@
             <h5 class="file-title-sidebar">{{.Data.Key}}</h5>
           </div>
           <p class="mt-3">{{.Data.Size}}</p>
+          <embed id="previewTag" autoplay="false">
           <div class="row justify-content-center">
             <div class="col-12 col-sm-4 col-lg-12">
               <a href="?download" class="btn btn-primary btn-lg btn-block mb-3" download>Download <img src="{{.Base}}/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
@@ -113,6 +114,8 @@
 <div class="modal-backdrop fade show" id="backdrop" style="display: none;"></div>
 
 <script type="text/javascript">
+  const previewExtensions = ['pdf', 'bmp', 'svg', 'jpg', 'jpeg', 'png', 'ico', 'gif', 'm4v', 'ogg', 'webm', 'mp3', 'wav']
+
   function openModal() {
     document.getElementById("backdrop").style.display = "block"
     document.getElementById("shareModal").style.display = "block"
@@ -216,6 +219,11 @@
       document.getElementById('collectingPieces').style.display = 'none';
       document.getElementById('readyForDownload').style.display = 'block';
       document.getElementById('pieces').style.display = 'block';
+
+      const fileExtension = {{.Data.Key}}.split('.').pop()
+      if (previewExtensions.includes(fileExtension)) {
+          document.getElementById('previewTag').src = `${window.location.origin}${window.location.pathname}?preview`
+      }
   }
 </script>
 
