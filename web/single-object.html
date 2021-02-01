@@ -222,7 +222,7 @@
 
       const fileExtension = {{.Data.Key}}.split('.').pop()
       if (previewExtensions.includes(fileExtension)) {
-          document.getElementById('previewTag').src = `${window.location.origin}${window.location.pathname}?preview`
+          document.getElementById('previewTag').src = `${window.location.origin}${window.location.pathname}?wrap=0`
       }
   }
 </script>

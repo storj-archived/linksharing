@@ -124,13 +124,11 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 	// on, otherwise we fall back to what wrapDefault was.
 	wrap := queryFlagLookup(q, "wrap",
 		!queryFlagLookup(q, "view", !pr.wrapDefault))
-	// flag for media previews.
-	previewFlag := queryFlagLookup(q, "preview", false)
 
 	if download {
 		w.Header().Set("Content-Disposition", "attachment")
 	}
-	if previewFlag || download || !wrap {
+	if download || !wrap {
 		httpranger.ServeContent(ctx, w, r, o.Key, o.System.Created, objectranger.New(project, o, pr.bucket))
 		return nil
 	}
