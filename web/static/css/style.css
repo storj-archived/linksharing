@@ -309,8 +309,15 @@ p, span, a {
   margin-bottom: 0;
 }
 
-#previewTag {
-  width: 100%;
+#pdfTag,
+#imgTag,
+#videoTag,
+#audioTag {
+  display: none;
   max-width: 100%;
   margin-bottom: 20px;
+}
+
+#pdfTag {
+  height: 500px;
 }
