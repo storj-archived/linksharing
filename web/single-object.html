@@ -71,6 +71,10 @@
             <h5 class="file-title-sidebar">{{.Data.Key}}</h5>
           </div>
           <p class="mt-3">{{.Data.Size}}</p>
+          <embed class="embed-responsive embed-responsive-4by3" id="pdfTag">
+          <img class="embed-responsive embed-responsive-4by3" id="imgTag" alt="preview image">
+          <video class="embed-responsive embed-responsive-4by3" id="videoTag" controls></video>
+          <audio class="embed-responsive embed-responsive-4by3" id="audioTag" controls></audio>
           <div class="row justify-content-center">
             <div class="col-12 col-sm-4 col-lg-12">
               <a href="?download" class="btn btn-primary btn-lg btn-block mb-3" download>Download <img src="{{.Base}}/static/img/icon-download-white.svg" alt="Download" class="ml-2"></a>
@@ -113,6 +117,11 @@
 <div class="modal-backdrop fade show" id="backdrop" style="display: none;"></div>
 
 <script type="text/javascript">
+  const pdfExtensions = 'pdf'
+  const imageExtensions = ['bmp', 'svg', 'jpg', 'jpeg', 'png', 'ico', 'gif']
+  const videoExtensions = ['m4v', 'mp4', 'webm']
+  const audioExtensions = ['mp3', 'wav', 'ogg']
+
   function openModal() {
     document.getElementById("backdrop").style.display = "block"
     document.getElementById("shareModal").style.display = "block"
@@ -151,6 +160,13 @@
       }
 
       throw result
+  }
+
+  function setupPreviewTag(id) {
+      const previewURL = `${window.location.origin}${window.location.pathname}?wrap=0`
+
+      document.getElementById(id).style.display = 'block'
+      document.getElementById(id).src = previewURL
   }
 
   let modal = document.getElementById('shareModal');
@@ -216,6 +232,24 @@
       document.getElementById('collectingPieces').style.display = 'none';
       document.getElementById('readyForDownload').style.display = 'block';
       document.getElementById('pieces').style.display = 'block';
+
+      const fileExtension = {{.Data.Key}}.split('.').pop()
+
+      switch (true) {
+          case fileExtension === pdfExtensions:
+              setupPreviewTag('pdfTag')
+              break
+          case imageExtensions.includes(fileExtension):
+              setupPreviewTag('imgTag')
+              break
+          case videoExtensions.includes(fileExtension):
+              setupPreviewTag('videoTag')
+              break
+          case audioExtensions.includes(fileExtension):
+              setupPreviewTag('audioTag')
+              break
+          default:
+      }
   }
 </script>
 

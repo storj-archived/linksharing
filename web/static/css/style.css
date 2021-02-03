@@ -308,3 +308,16 @@ p, span, a {
 .directory-size {
   margin-bottom: 0;
 }
+
+#pdfTag,
+#imgTag,
+#videoTag,
+#audioTag {
+  display: none;
+  max-width: 100%;
+  margin-bottom: 20px;
+}
+
+#pdfTag {
+  height: 500px;
+}
