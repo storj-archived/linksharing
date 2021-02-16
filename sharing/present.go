@@ -6,6 +6,7 @@ package sharing
 import (
 	"context"
 	"errors"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -129,6 +130,11 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 		w.Header().Set("Content-Disposition", "attachment")
 	}
 	if download || !wrap {
+		contentType := mime.TypeByExtension(filepath.Ext(o.Key))
+		if contentType != "" {
+			w.Header().Set("Content-Type", contentType)
+		}
+
 		httpranger.ServeContent(ctx, w, r, o.Key, o.System.Created, objectranger.New(project, o, pr.bucket))
 		return nil
 	}
