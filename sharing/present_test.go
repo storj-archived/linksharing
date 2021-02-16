@@ -39,7 +39,8 @@ func TestDownloadContentTypeHeader(t *testing.T) {
 	err = handler.showObject(ctx, w, r, pr, project, object)
 	require.NoError(t, err)
 
-	ctypes, _ := w.Header()["Content-Type"]
+	ctypes, haveType := w.Header()["Content-Type"]
+	require.True(t, haveType)
 	require.Equal(t, "image/jpeg", ctypes[0])
 
 	object.Key = "test"
@@ -47,6 +48,7 @@ func TestDownloadContentTypeHeader(t *testing.T) {
 	err = handler.showObject(ctx, w, r, pr, project, object)
 	require.NoError(t, err)
 
-	ctypes, _ = w.Header()["Content-Type"]
+	ctypes, haveType = w.Header()["Content-Type"]
+	require.True(t, haveType)
 	require.Equal(t, "application/octet-stream", ctypes[0])
 }
