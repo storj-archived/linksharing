@@ -25,7 +25,7 @@ func randSleep() {
 }
 
 func TestMutexGroup(t *testing.T) {
-	defer testcontext.NewWithTimeout(t, 5*time.Second).Cleanup()
+	defer testcontext.NewWithTimeout(t, time.Minute).Cleanup()
 
 	var accesses errs2.Group
 
@@ -41,7 +41,7 @@ func TestMutexGroup(t *testing.T) {
 
 				highwater := int32(0)
 
-				for i := 0; i < 2000; i++ {
+				for i := 0; i < 100; i++ {
 					randSleep()
 					err := func() error {
 						unlock := muGroup.Lock(lockName)
