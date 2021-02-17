@@ -4,7 +4,6 @@
 package sharing
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"storj.io/common/testcontext"
 	"storj.io/linksharing/objectmap"
 	"storj.io/uplink"
 )
@@ -25,7 +25,7 @@ func TestDownloadContentTypeHeader(t *testing.T) {
 	handler, err := NewHandler(&zap.Logger{}, &objectmap.IPDB{}, cfg)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := testcontext.New(t)
 	w := httptest.NewRecorder()
 	r, err := http.NewRequest("GET", "http://test.test?download", nil)
 	require.NoError(t, err)
