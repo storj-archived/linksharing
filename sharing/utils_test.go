@@ -6,13 +6,13 @@ package sharing
 import (
 	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"storj.io/common/errs2"
 	"storj.io/common/testcontext"
 )
 
@@ -25,46 +25,67 @@ func randSleep() {
 }
 
 func TestMutexGroup(t *testing.T) {
-	defer testcontext.NewWithTimeout(t, 5*time.Second).Cleanup()
+	defer testcontext.NewWithTimeout(t, time.Minute).Cleanup()
+
+	var accesses errs2.Group
 
 	var muGroup MutexGroup
-	var wg sync.WaitGroup
 	var counters [3]*int32
 	totalCounter := new(int32)
 	for lockNo := 0; lockNo < len(counters); lockNo++ {
 		counters[lockNo] = new(int32)
 		for workerNo := 0; workerNo < 10; workerNo++ {
-			wg.Add(1)
-			go func(workerNo, lockNo int) {
-				defer wg.Done()
-
+			lockNo := lockNo
+			accesses.Go(func() error {
 				lockName := fmt.Sprint(lockNo)
 
 				highwater := int32(0)
 
-				for i := 0; i < 2000; i++ {
+				for i := 0; i < 100; i++ {
 					randSleep()
-					func() {
+					err := func() error {
 						unlock := muGroup.Lock(lockName)
 						defer unlock()
-						require.Equal(t, int32(1), atomic.AddInt32(counters[lockNo], 1))
+
+						incr := atomic.AddInt32(counters[lockNo], 1)
+						if incr != 1 {
+							return fmt.Errorf("expected incr %v got %v;", 1, incr)
+						}
+
 						total := atomic.AddInt32(totalCounter, 1)
-						require.LessOrEqual(t, total, int32(len(counters)))
+						if total > int32(len(counters)) {
+							return fmt.Errorf("total %v > counters %v;", total, len(counters))
+						}
 						if total > highwater {
 							highwater = total
 						}
 						randSleep()
-						require.Equal(t, int32(0), atomic.AddInt32(counters[lockNo], -1))
-						require.GreaterOrEqual(t, atomic.AddInt32(totalCounter, -1), int32(0))
+
+						decr := atomic.AddInt32(counters[lockNo], -1)
+						if decr != 0 {
+							return fmt.Errorf("expected decr %v got %v;", 0, decr)
+						}
+
+						totalAfter := atomic.AddInt32(totalCounter, -1)
+						if totalAfter < 0 {
+							return fmt.Errorf("total was negative, got %v;", totalAfter)
+						}
+
+						return nil
 					}()
+					if err != nil {
+						return err
+					}
 				}
 
-				require.Equal(t, highwater, int32(len(counters)))
-
-			}(workerNo, lockNo)
+				if highwater != int32(len(counters)) {
+					return fmt.Errorf("highwater %v != len(counters) %v;", highwater, len(counters))
+				}
+				return nil
+			})
 		}
 	}
-	wg.Wait()
+	require.Empty(t, accesses.Wait())
 
 	require.Equal(t, int32(0), *totalCounter)
 	for lockNo := 0; lockNo < len(counters); lockNo++ {
