@@ -18,6 +18,7 @@ require (
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/tools v0.0.0-20200428211428-0c9eba77bc32 // indirect
 	storj.io/common v0.0.0-20210119231202-8321551aa24d
+	storj.io/monkit-jaeger v0.0.0-20210225162224-66fb37637bf6 // indirect
 	storj.io/private v0.0.0-20210120150301-bd3ac3e989f0
 	storj.io/uplink v1.4.6-0.20210126192115-f484c5a10918
 )
