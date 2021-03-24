@@ -5,7 +5,6 @@ package sharing
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -63,11 +62,6 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 
 	q := r.URL.Query()
 
-	// flag used for get locations request.
-	if queryFlagLookup(q, "locations", false) {
-		return handler.serveLocations(ctx, w, pr)
-	}
-
 	if queryFlagLookup(q, "map", false) {
 		return handler.serveMap(ctx, w, pr, queryIntLookup(q, "width", 800))
 	}
@@ -111,28 +105,4 @@ func (handler *Handler) getLocations(ctx context.Context, pr parsedRequest) (loc
 	}
 
 	return locations, ipSummary.PieceCount, nil
-}
-
-func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWriter, pr parsedRequest) (err error) {
-	defer mon.Task()(&ctx)(&err)
-
-	locations, pieces, err := handler.getLocations(ctx, pr)
-	if err != nil {
-		return err
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	err = json.NewEncoder(w).Encode(struct {
-		Locations  []location `json:"locations"`
-		PieceCount int64      `json:"pieceCount"`
-	}{
-		Locations:  locations,
-		PieceCount: pieces,
-	})
-	if err != nil {
-		handler.log.Error("failed to write json list locations response", zap.Error(err))
-	}
-
-	return nil
 }

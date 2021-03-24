@@ -18,25 +18,11 @@
             <div class="row">
               <div class="col text-center mb-4 mt-3 mt-lg-0">
                 <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Data.Key}}</span> on Tardigrade</h6>
-                <div id="smallFileMessage" class="row flex-nowrap text-left">
-                  <p class="mb-0">Files under 4kb are too small to distribute on the network. They are stored as metadata on the satellite you use with the same level of encryption as any other file.</p>
-                </div>
               </div>
             </div>
             <div class="row">
-              <div id="mapid" class="col-12 col-lg-8 text-center map">
-                <div id="spinner" class="lds-ring"><div></div><div></div><div></div><div></div></div>
-                <!-- Map is loaded here -->
-              </div>
-              <div class="col-12 col-lg-4 text-center text-lg-left">
-                <p class="mt-4 justify-content-lg-start status">
-                  <strong>Status:</strong>
-                  <span id="collectingPieces">Collecting pieces...</span>
-                  <span id="readyForDownload">Ready for download</span>
-                </p>
-                <p class="mt-4"><strong>File Size:</strong> <span>{{.Data.Size}}</span></p>
-                <p id="pieces" class="mt-4"><strong>File Pieces:</strong> <span id="piecesNumber"></span></p>
-                <p id="piecesMessage">Due to fluctuations in the network the number of pieces displayed for your file may change</p>
+              <div id="map-img" class="col-12 col-lg-12 text-center map">
+                <img src="?map=1&width=800" width=800 height=400 />
               </div>
             </div>
           </div>
@@ -119,7 +105,7 @@
 <script type="text/javascript">
   const pdfExtensions = 'pdf'
   const imageExtensions = ['bmp', 'svg', 'jpg', 'jpeg', 'png', 'ico', 'gif']
-  const videoExtensions = ['m4v', 'mp4', 'webm']
+  const videoExtensions = ['m4v', 'mp4', 'webm', 'mov', 'mkv']
   const audioExtensions = ['mp3', 'wav', 'ogg']
 
   function openModal() {
@@ -141,27 +127,6 @@
     document.getElementById("copyNotification").style.display = "block"
   }
 
-  async function getLocationsSummary() {
-      const path = `${window.location.pathname}?locations`;
-      const request = {
-          method: 'GET',
-      };
-
-      request.headers = {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-      };
-
-      const response = await fetch(path, request);
-      const result = await response.json();
-
-      if (response.ok) {
-          return result
-      }
-
-      throw result
-  }
-
   function setupPreviewTag(id) {
       const previewURL = `${window.location.origin}${window.location.pathname}?wrap=0`
 
@@ -179,60 +144,6 @@
   }
 
   window.onload = async function () {
-      let mymap = L.map('mapid').setView([35, 10], 1.2);
-
-      L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYnJhbmRvbnN0b3JqIiwiYSI6ImNrZzlrcG1lcDByemgycm11MHBiZ2VhcGUifQ.kp78EgYfoLWzePO0f9cWVQ', {
-          maxZoom: 6,
-          minZoom: 1,
-          attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-              '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-              'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-          id: 'boshevski/ckg4162p90kie19nzjdzxhwb9',
-          tileSize: 512,
-          zoomOffset: -1,
-          // this map option disables world wrapping. by default, it is false.
-          continuousWorld: false,
-          // this option disables loading tiles outside of the world bounds.
-          noWrap: true,
-          bounds: [
-              [-90, -180],
-              [90, 180]
-          ]
-      }).addTo(mymap);
-
-      let routes = []
-      try {
-          const summary = await getLocationsSummary();
-
-          routes = summary.locations;
-          document.getElementById('piecesNumber').innerText = summary.pieceCount;
-
-          if (!summary.pieceCount) {
-              document.getElementById('smallFileMessage').style.display = 'flex';
-          }
-      } catch (error) {
-          console.log(error.message)
-      }
-
-      circleOpts = {
-          color: '#2582ff',
-          fillColor: '#2582ff',
-          radius: 6000,
-          fillOpacity: 1,
-      };
-
-      for (let i = 0; i < routes.length; i++) {
-          r = routes[i]
-
-          L.circle([r.Latitude, r.Longitude], circleOpts).addTo(mymap);
-      }
-
-      document.getElementById('spinner').style.display = 'none';
-      document.getElementById('mapid').style.pointerEvents = 'auto';
-      document.getElementById('collectingPieces').style.display = 'none';
-      document.getElementById('readyForDownload').style.display = 'block';
-      document.getElementById('pieces').style.display = 'block';
-
       const fileExtension = {{.Data.Key}}.split('.').pop()
 
       switch (true) {
