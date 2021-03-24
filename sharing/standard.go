@@ -13,7 +13,6 @@ import (
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
-	"storj.io/uplink"
 	"storj.io/uplink/private/object"
 )
 
@@ -65,9 +64,12 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 	q := r.URL.Query()
 
 	// flag used for get locations request.
-	locationsFlag := queryFlagLookup(q, "locations", false)
-	if locationsFlag {
+	if queryFlagLookup(q, "locations", false) {
 		return handler.serveLocations(ctx, w, pr)
+	}
+
+	if queryFlagLookup(q, "map", false) {
+		return handler.serveMap(ctx, w, pr, queryIntLookup(q, "width", 800))
 	}
 
 	pr.visibleKey = pr.realKey
@@ -77,15 +79,17 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 	return handler.present(ctx, w, r, &pr)
 }
 
-func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWriter, pr parsedRequest) error {
-	ipSummary, err := object.GetObjectIPSummary(ctx, uplink.Config{}, pr.access, pr.bucket, pr.realKey)
-	if err != nil {
-		return WithAction(err, "get object IPs summary")
-	}
+type location struct {
+	Latitude  float64
+	Longitude float64
+}
 
-	type location struct {
-		Latitude  float64
-		Longitude float64
+func (handler *Handler) getLocations(ctx context.Context, pr parsedRequest) (locs []location, pieceCount int64, err error) {
+	defer mon.Task()(&ctx)(&err)
+
+	ipSummary, err := object.GetObjectIPSummary(ctx, *handler.uplink, pr.access, pr.bucket, pr.realKey)
+	if err != nil {
+		return nil, 0, WithAction(err, "get locations")
 	}
 
 	// we explicitly don't want locations to be nil, so it doesn't
@@ -106,16 +110,25 @@ func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWrite
 		}
 	}
 
-	type locSummary struct {
-		Locations  []location `json:"locations"`
-		PieceCount int64      `json:"pieceCount"`
+	return locations, ipSummary.PieceCount, nil
+}
+
+func (handler *Handler) serveLocations(ctx context.Context, w http.ResponseWriter, pr parsedRequest) (err error) {
+	defer mon.Task()(&ctx)(&err)
+
+	locations, pieces, err := handler.getLocations(ctx, pr)
+	if err != nil {
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(locSummary{
+	err = json.NewEncoder(w).Encode(struct {
+		Locations  []location `json:"locations"`
+		PieceCount int64      `json:"pieceCount"`
+	}{
 		Locations:  locations,
-		PieceCount: ipSummary.PieceCount,
+		PieceCount: pieces,
 	})
 	if err != nil {
 		handler.log.Error("failed to write json list locations response", zap.Error(err))

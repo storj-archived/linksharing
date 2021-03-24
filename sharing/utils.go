@@ -5,6 +5,7 @@ package sharing
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,17 @@ func queryFlagLookup(q url.Values, name string, defValue bool) bool {
 		return false
 	}
 	return true
+}
+
+// queryIntLookup finds an integer value in a url.Values struct, returning
+// defValue if not found or invalid.
+func queryIntLookup(q url.Values, name string, defValue int) int {
+	if vals, ok := q[name]; ok && len(vals) > 0 {
+		if val, err := strconv.Atoi(vals[0]); err == nil {
+			return val
+		}
+	}
+	return defValue
 }
 
 // MutexGroup is a group of mutexes by name that attempts to only keep track of
