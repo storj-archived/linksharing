@@ -117,6 +117,10 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 
 	q := r.URL.Query()
 
+	if queryFlagLookup(q, "map", false) {
+		return handler.serveMap(ctx, w, pr, queryIntLookup(q, "width", 800))
+	}
+
 	// if someone provides the 'download' flag on or off, we do that, otherwise
 	// we do what the downloadDefault was (based on the URL scope).
 	download := queryFlagLookup(q, "download", pr.downloadDefault)
