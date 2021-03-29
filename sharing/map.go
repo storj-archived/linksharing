@@ -8,11 +8,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"go.uber.org/zap"
 
+	"storj.io/common/memory"
 	"storj.io/dotworld"
 	"storj.io/dotworld/reference"
+	"storj.io/uplink"
 	"storj.io/uplink/private/object"
 )
 
@@ -50,7 +53,7 @@ func (handler *Handler) getLocations(ctx context.Context, pr *parsedRequest) (lo
 	return locations, ipSummary.PieceCount, nil
 }
 
-func (handler *Handler) serveMap(ctx context.Context, w http.ResponseWriter, pr *parsedRequest, width int) (err error) {
+func (handler *Handler) serveMap(ctx context.Context, w http.ResponseWriter, pr *parsedRequest, o *uplink.Object, q url.Values) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	locations, pieces, err := handler.getLocations(ctx, pr)
@@ -60,14 +63,18 @@ func (handler *Handler) serveMap(ctx context.Context, w http.ResponseWriter, pr 
 
 	m := reference.WorldMap()
 
-	for _, loc := range locations {
-		if nearest := m.Nearest(m.Lookup(dotworld.S2{
-			Lat:  float32(loc.Latitude),
-			Long: float32(loc.Longitude),
-		})); nearest != nil {
-			nearest.Load += 1.0 / float32(pieces)
+	for i, loc := range locations {
+		m.Locations[dotworld.GridPosition{Row: -1, Col: i}] = &dotworld.Location{
+			S2: dotworld.S2{
+				Lat:  float32(loc.Latitude),
+				Long: float32(loc.Longitude),
+			},
+			Land: 1,
+			Load: .01,
 		}
 	}
+
+	width := queryIntLookup(q, "width", 800)
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 
@@ -79,12 +86,24 @@ func (handler *Handler) serveMap(ctx context.Context, w http.ResponseWriter, pr 
 
 	data := buf.Bytes()
 	if pieces == 0 {
-		data = bytes.Replace(data, []byte("</svg>"), []byte(
-			`<text x="50%" y="85%" dominant-baseline="middle" text-anchor="middle"
+		if width >= 500 && queryFlagLookup(q, "include-stats", true) {
+			data = bytes.Replace(data, []byte("</svg>"), []byte(
+				`<text x="50%" y="85%" dominant-baseline="middle" text-anchor="middle"
 	    style="font-family:Poppins,sans-serif;font-size:18px;fill:#6c757d;fill-opacity:1;">
 	    Files under 4k are stored as metadata with strong encryption.
 	  </text>
 	</svg>`), 1)
+		}
+	} else {
+		if width >= 400 && queryFlagLookup(q, "include-stats", true) {
+			data = bytes.Replace(data, []byte("</svg>"), []byte(
+				`<text x="3%" y="75%" width="100%" dominant-baseline="middle" text-anchor="left"
+	    style="font-family:Poppins,sans-serif;font-size:18px;fill:#6c757d;fill-opacity:1;">
+	    <tspan font-weight="bold">Pieces:</tspan> `+fmt.Sprint(pieces)+`
+	    <tspan x="3%" dy="1.4em"><tspan font-weight="bold">Size:</tspan> `+memory.Size(o.System.ContentLength).Base10String()+`</tspan>
+	  </text>
+	</svg>`), 1)
+		}
 	}
 
 	w.Header().Set("Content-Length", fmt.Sprint(len(data)))

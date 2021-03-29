@@ -198,7 +198,9 @@ p, span, a {
 
 .map {
   width: 100%;
+  max-width: 800px;
   background: #fff !important;
+  margin: auto;
   pointer-events: none;
 }
 
