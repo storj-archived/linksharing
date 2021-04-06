@@ -204,6 +204,15 @@ func (server *Server) Close() error {
 	return errlist.Err()
 }
 
+// BaseTLSConfig returns a tls.Config with some good default settings for security.
+func BaseTLSConfig() *tls.Config {
+	// these settings give us a score of A on https://www.ssllabs.com/ssltest/index.html
+	return &tls.Config{
+		MinVersion:             tls.VersionTLS12,
+		SessionTicketsDisabled: true, // thanks, jeff hodges! https://groups.google.com/g/golang-nuts/c/m3l0AesTdog/m/8CeLeVVyWw4J
+	}
+}
+
 func configureTLS(config *TLSConfig, handler http.Handler) (*tls.Config, http.Handler, error) {
 
 	if config.LetsEncrypt {
@@ -225,9 +234,9 @@ func configureTLS(config *TLSConfig, handler http.Handler) (*tls.Config, http.Ha
 		return nil, nil, errs.New("unable to load server keypair: %v", err)
 	}
 
-	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}, handler, nil
+	tlsConfig := BaseTLSConfig()
+	tlsConfig.Certificates = []tls.Certificate{cert}
+	return tlsConfig, handler, nil
 }
 
 func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config, http.Handler, error) {
@@ -241,10 +250,8 @@ func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config,
 		Cache:      autocert.DirCache(filepath.Join(config.ConfigDir, ".certs")),
 	}
 
-	tlsConfig := &tls.Config{
-		GetCertificate: certManager.GetCertificate,
-	}
-
+	tlsConfig := BaseTLSConfig()
+	tlsConfig.GetCertificate = certManager.GetCertificate
 	return tlsConfig, certManager.HTTPHandler(handler), nil
 }
 
