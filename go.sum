@@ -607,8 +607,9 @@ honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 storj.io/common v0.0.0-20200424175742-65ac59022f4f/go.mod h1:pZyXiIE7bGETIRXtfs0nICqMwp7PM8HqnDuyUeldNA0=
 storj.io/common v0.0.0-20201026135900-1aaeec90670b/go.mod h1:GqdmNf3fLm2UZX/7Zr0BLFCJ4gFjgm6eHrk/fnmr5jQ=
-storj.io/common v0.0.0-20210324105846-0a39fd4f6781 h1:T6cGTZ/iTIaj9tUP82frn64JiTWGA/dvNGGASIOOzA4=
 storj.io/common v0.0.0-20210324105846-0a39fd4f6781/go.mod h1:Udjm4roy/lhL7PHDWlNVhuVxlohcPiyHMeuigw94SDE=
+storj.io/common v0.0.0-20210412024514-5bcb1fff421e h1:/kXB89KYCVxgY37YjQXvCfNUpSTMDaJfCYeDnT4ar9A=
+storj.io/common v0.0.0-20210412024514-5bcb1fff421e/go.mod h1:Udjm4roy/lhL7PHDWlNVhuVxlohcPiyHMeuigw94SDE=
 storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840 h1:oqMwoF6vaOrCe92SKRyr8cc2WSjLYAd8fjpAHA7rNqY=
 storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840/go.mod h1:KU9YvEgRrMMiWLvH8pzn1UkoCoxggKIPvQxmNdx7aXQ=
 storj.io/drpc v0.0.11/go.mod h1:TiFc2obNjL9/3isMW1Rpxjy8V9uE0B2HMeMFGiiI7Iw=

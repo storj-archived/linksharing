@@ -15,7 +15,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	storj.io/common v0.0.0-20210324105846-0a39fd4f6781
+	storj.io/common v0.0.0-20210412024514-5bcb1fff421e
 	storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840
 	storj.io/monkit-jaeger v0.0.0-20210225162224-66fb37637bf6 // indirect
 	storj.io/private v0.0.0-20210120150301-bd3ac3e989f0
