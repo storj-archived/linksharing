@@ -47,9 +47,9 @@ p, span, a {
 
 .logo {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  width: 140px;
+  top: 10px;
+  left: 10px;
+  width: 168px;
 }
 
 .logo-mobile {
@@ -125,7 +125,7 @@ p, span, a {
   border-radius: 20px;
   font-weight: bold;
   display: inline-block;
-  margin-top: 10px;
+  margin: 10px 0 0 0;
 }
 
 .file-title-distribution {

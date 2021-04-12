@@ -7,7 +7,7 @@
 
       <div class="row d-none d-lg-block mb-4">
         <div class="col text-center">
-          <a href="http://tardigrade.io/"><img src="{{.Base}}/static/img/logo.svg" class="logo" alt="Logo"></a>
+          <a href="javascript:location.reload()"><img src="{{.Base}}/static/img/logo.svg" class="logo" alt="Logo"></a>
           <p class="file-title-top text-center">{{.Data.Key}}</p>
         </div>
       </div>
@@ -17,7 +17,7 @@
           <div class="card p-3 p-lg-5">
             <div class="row">
               <div class="col text-center mb-4 mt-3 mt-lg-0">
-                <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Data.Key}}</span> on Tardigrade</h6>
+                <h6>Real-time Distribution of <span class="text-muted file-title-distribution">{{.Data.Key}}</span> on Storj DCS</h6>
               </div>
             </div>
             <div class="row">
@@ -32,8 +32,8 @@
       <div class="row justify-content-center">
         <div class="col-12 col-sm-10 col-xl-8 text-center py-5">
           <h5 class="mb-3">You’re Downloading this File From All Over the World</h5>
-          <p>Tardigrade distributes pieces of each file to a global network of independent nodes, and then recompiles them securely on download.  This means your data isn't being stored in an unsafe, centralized data center. The map above shows the location of the pieces of the file you are about to download.</p>
-          <a href="https://tardigrade.io/how-it-works/" target="_blank" rel="noopener" class="btn btn-light btn-lg text-primary px-4 mt-2 mb-4">Learn More About Tardigrade</a>
+          <p>Storj DCS distributes pieces of each file to a global network of independent nodes, and then recompiles them securely on download.  This means your data isn't being stored in an unsafe, centralized data center. The map above shows the location of the pieces of the file you are about to download.</p>
+          <a href="https://tardigrade.io/how-it-works/" target="_blank" rel="noopener" class="d-none btn btn-light btn-lg text-primary px-4 mt-2 mb-4">Learn More About Tardigrade</a>
         </div>
       </div>
 
@@ -42,10 +42,10 @@
     <div class="col-lg-4 col-xl-3 order-1 order-lg-2">
       <div class="row mb-5 mt-3">
         <div class="col-2">
-          <a href="http://tardigrade.io/" class="d-block d-lg-none mt-1"><img src="{{.Base}}/static/img/logo.svg" class="logo-mobile" alt="Logo"></a>
+          <a href="javascript: location.reload()" class="d-block d-lg-none"><img src="{{.Base}}/static/img/logo.svg" class="logo-mobile" alt="Logo"></a>
           <a href="?download" class="btn btn-outline-secondary d-none d-lg-inline-block" download><img src="{{.Base}}/static/img/icon-download-blue.svg" alt="Download"></a>
         </div>
-        <div class="col-10 text-right">
+        <div class="col-10 text-right d-none">
           <a href="https://tardigrade.io/login" class="btn btn-outline-secondary">Sign In</a>
           <a href="https://tardigrade.io/signup" class="btn btn-outline-primary">Sign Up</a>
         </div>
