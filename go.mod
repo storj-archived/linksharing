@@ -19,5 +19,5 @@ require (
 	storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840
 	storj.io/monkit-jaeger v0.0.0-20210225162224-66fb37637bf6 // indirect
 	storj.io/private v0.0.0-20210120150301-bd3ac3e989f0
-	storj.io/uplink v1.4.6-0.20210329163749-e407b5a2808e
+	storj.io/uplink v1.4.6-0.20210409140224-ad6bc2e5b2ee
 )
