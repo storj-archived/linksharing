@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,7 +29,7 @@ type LinkSharing struct {
 	LetsEncrypt           bool          `user:"true" help:"use lets-encrypt to handle TLS certificates" default:"false"`
 	CertFile              string        `user:"true" help:"server certificate file" devDefault:"" releaseDefault:"server.crt.pem"`
 	KeyFile               string        `user:"true" help:"server key file" devDefault:"" releaseDefault:"server.key.pem"`
-	PublicURL             string        `user:"true" help:"public url for the server" devDefault:"http://localhost:8080" releaseDefault:""`
+	PublicURL             string        `user:"true" help:"comma separated list of public urls for the server" devDefault:"http://localhost:8080" releaseDefault:""`
 	GeoLocationDB         string        `user:"true" help:"maxmind database file path" devDefault:"" releaseDefault:""`
 	TxtRecordTTL          time.Duration `user:"true" help:"max ttl (seconds) for website hosting txt record cache" devDefault:"10s" releaseDefault:"1h"`
 	AuthServiceBaseURL    string        `user:"true" help:"base url to use for resolving access key ids" default:""`
@@ -36,7 +37,7 @@ type LinkSharing struct {
 	DNSServer             string        `user:"true" help:"dns server address to use for TXT resolution" default:"1.1.1.1:53"`
 	StaticSourcesPath     string        `user:"true" help:"the path to where web assets are located" default:"./web/static"`
 	Templates             string        `user:"true" help:"the path to where renderable templates are located" default:"./web"`
-	LandingRedirectTarget string        `user:"true" help:"the url to redirect empty requests to" default:"https://tardigrade.io/"`
+	LandingRedirectTarget string        `user:"true" help:"the url to redirect empty requests to" default:"https://www.storj.io/"`
 }
 
 var (
@@ -76,6 +77,8 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
+	publicURLs := strings.Split(runCfg.PublicURL, ",")
+
 	peer, err := linksharing.New(log, linksharing.Config{
 		Server: httpserver.Config{
 			Name:       "Link Sharing",
@@ -85,13 +88,13 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 				LetsEncrypt: runCfg.LetsEncrypt,
 				CertFile:    runCfg.CertFile,
 				KeyFile:     runCfg.KeyFile,
-				PublicURL:   runCfg.PublicURL,
+				PublicURLs:  publicURLs,
 				ConfigDir:   confDir,
 			},
 			ShutdownTimeout: -1,
 		},
 		Handler: sharing.Config{
-			URLBase:               runCfg.PublicURL,
+			URLBases:              publicURLs,
 			Templates:             runCfg.Templates,
 			StaticSourcesPath:     runCfg.StaticSourcesPath,
 			LandingRedirectTarget: runCfg.LandingRedirectTarget,

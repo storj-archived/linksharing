@@ -41,7 +41,7 @@ eAOcuTgWmgqXRnHVwKJl2g1pCb2hRANCAARWxVAPyT1BRs2hqiDuHlPXr1kVDXuw
 func TestServer(t *testing.T) {
 	address := "localhost:15001"
 	handlerConfig := sharing.Config{
-		URLBase:   "https://localhost:15001",
+		URLBases:  []string{"https://localhost:15001"},
 		Templates: "../web/",
 	}
 	mapper := objectmap.NewIPDB(&objectmap.MockReader{})
@@ -63,7 +63,7 @@ func TestServer(t *testing.T) {
 		KeyFile:     keyPath,
 		LetsEncrypt: false,
 		ConfigDir:   tempdir,
-		PublicURL:   address,
+		PublicURLs:  []string{address},
 	}
 
 	noTLSConfig := &TLSConfig{
@@ -71,7 +71,7 @@ func TestServer(t *testing.T) {
 		KeyFile:     "",
 		LetsEncrypt: false,
 		ConfigDir:   tempdir,
-		PublicURL:   address,
+		PublicURLs:  []string{address},
 	}
 
 	testCases := []serverTestCase{

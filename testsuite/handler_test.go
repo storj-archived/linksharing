@@ -35,47 +35,47 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "URL base must be http or https",
 			config: sharing.Config{
-				URLBase: "gopher://chunks",
+				URLBases: []string{"gopher://chunks"},
 			},
 			err: "URL base must be http:// or https://",
 		},
 		{
 			name: "URL base must contain host",
 			config: sharing.Config{
-				URLBase: "http://",
+				URLBases: []string{"http://"},
 			},
 			err: "URL base must contain host",
 		},
 		{
 			name: "URL base can have a port",
 			config: sharing.Config{
-				URLBase: "http://host:99",
+				URLBases: []string{"http://host:99"},
 			},
 		},
 		{
 			name: "URL base can have a path",
 			config: sharing.Config{
-				URLBase: "http://host/gopher",
+				URLBases: []string{"http://host/gopher"},
 			},
 		},
 		{
 			name: "URL base must not contain user info",
 			config: sharing.Config{
-				URLBase: "http://joe@host",
+				URLBases: []string{"http://joe@host"},
 			},
 			err: "URL base must not contain user info",
 		},
 		{
 			name: "URL base must not contain query values",
 			config: sharing.Config{
-				URLBase: "http://host/?gopher=chunks",
+				URLBases: []string{"http://host/?gopher=chunks"},
 			},
 			err: "URL base must not contain query values",
 		},
 		{
 			name: "URL base must not contain a fragment",
 			config: sharing.Config{
-				URLBase: "http://host/#gopher-chunks",
+				URLBases: []string{"http://host/#gopher-chunks"},
 			},
 			err: "URL base must not contain a fragment",
 		},
@@ -295,7 +295,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			handler, err := sharing.NewHandler(zaptest.NewLogger(t), mapper, sharing.Config{
-				URLBase:   "http://localhost",
+				URLBases:  []string{"http://localhost"},
 				Templates: "./../web/",
 				AuthServiceConfig: sharing.AuthServiceConfig{
 					BaseURL: testCase.authserver,

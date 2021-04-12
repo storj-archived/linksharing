@@ -40,9 +40,10 @@ type pageData struct {
 
 // Config specifies the handler configuration.
 type Config struct {
-	// URLBase is the base URL of the link sharing handler. It is used
-	// to construct URLs returned to clients. It should be a fully formed URL.
-	URLBase string
+	// URLBases is the collection of potential base URLs of the link sharing
+	// handler. The first one in the list is used to construct URLs returned
+	// to clients. All should be a fully formed URL.
+	URLBases []string
 
 	// Templates location with html templates.
 	Templates string
@@ -73,7 +74,7 @@ type Config struct {
 // architecture: Service
 type Handler struct {
 	log             *zap.Logger
-	urlBase         *url.URL
+	urlBases        []*url.URL
 	templates       *template.Template
 	mapper          *objectmap.IPDB
 	txtRecords      *txtRecords
@@ -90,9 +91,16 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		return nil, err
 	}
 
-	urlBase, err := parseURLBase(config.URLBase)
-	if err != nil {
-		return nil, err
+	bases := make([]*url.URL, 0, len(config.URLBases))
+	for _, base := range config.URLBases {
+		parsed, err := parseURLBase(base)
+		if err != nil {
+			return nil, err
+		}
+		bases = append(bases, parsed)
+	}
+	if len(bases) < 1 {
+		return nil, errors.New("requires at least one url base")
 	}
 
 	templates, err := template.ParseGlob(filepath.Join(config.Templates, "*.html"))
@@ -113,7 +121,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 
 	return &Handler{
 		log:             log,
-		urlBase:         urlBase,
+		urlBases:        bases,
 		templates:       templates,
 		mapper:          mapper,
 		txtRecords:      newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
@@ -175,7 +183,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) renderTemplate(w http.ResponseWriter, template string, data pageData) {
-	data.Base = strings.TrimSuffix(handler.urlBase.String(), "/")
+	data.Base = strings.TrimSuffix(handler.urlBases[0].String(), "/")
 	err := handler.templates.ExecuteTemplate(w, template, data)
 	if err != nil {
 		handler.log.Error("error while executing template", zap.Error(err))
@@ -189,7 +197,7 @@ func (handler *Handler) serveHTTP(ctx context.Context, w http.ResponseWriter, r 
 		return WithStatus(errs.New("method not allowed"), http.StatusMethodNotAllowed)
 	}
 
-	ourDomain, err := compareHosts(r.Host, handler.urlBase.Host)
+	ourDomain, err := isDomainOurs(r.Host, handler.urlBases)
 	if err != nil {
 		return err
 	}
@@ -210,18 +218,31 @@ func (handler *Handler) serveHTTP(ctx context.Context, w http.ResponseWriter, r 
 	}
 }
 
-func compareHosts(url1, url2 string) (equal bool, err error) {
-	host1, _, err1 := net.SplitHostPort(url1)
-	host2, _, err2 := net.SplitHostPort(url2)
+func isDomainOurs(host string, bases []*url.URL) (bool, error) {
+	for _, base := range bases {
+		ours, err := compareHosts(host, base.Host)
+		if err != nil {
+			return false, err
+		}
+		if ours {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func compareHosts(addr1, addr2 string) (equal bool, err error) {
+	host1, _, err1 := net.SplitHostPort(addr1)
+	host2, _, err2 := net.SplitHostPort(addr2)
 
 	if err1 != nil && strings.Contains(err1.Error(), "missing port in address") {
-		host1 = url1
+		host1 = addr1
 	} else if err1 != nil {
 		return false, err1
 	}
 
 	if err2 != nil && strings.Contains(err2.Error(), "missing port in address") {
-		host2 = url2
+		host2 = addr2
 	} else if err2 != nil {
 		return false, err2
 	}

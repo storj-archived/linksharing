@@ -34,6 +34,8 @@ var AuthServiceError = errs.Class("auth service")
 
 // Resolve maps an access key into an auth service response.
 func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *AuthServiceResponse, err error) {
+	defer mon.Task()(&ctx)(&err)
+
 	reqURL, err := url.Parse(a.BaseURL)
 	if err != nil {
 		return nil, WithStatus(AuthServiceError.Wrap(err),

@@ -53,7 +53,7 @@ type TLSConfig struct {
 	LetsEncrypt bool
 	CertFile    string
 	KeyFile     string
-	PublicURL   string
+	PublicURLs  []string
 	ConfigDir   string
 }
 
@@ -240,7 +240,10 @@ func configureTLS(config *TLSConfig, handler http.Handler) (*tls.Config, http.Ha
 }
 
 func configureLetsEncrypt(config *TLSConfig, handler http.Handler) (*tls.Config, http.Handler, error) {
-	parsedURL, err := url.Parse(config.PublicURL)
+	if len(config.PublicURLs) != 1 {
+		return nil, nil, errs.New("cannot do self lets encrypt configuration for multiple hostnames")
+	}
+	parsedURL, err := url.Parse(config.PublicURLs[0])
 	if err != nil {
 		return nil, nil, err
 	}

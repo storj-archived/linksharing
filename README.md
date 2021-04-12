@@ -72,8 +72,8 @@ results in
 
 You can use your own domain and host your website on Tardigrade with the following setup.
 
-0. Upload your static site and other files to tardigrade using [Uplink](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli)
-or [S3 gateway](https://documentation.tardigrade.io/api-reference/s3-gateway). Download the [Uplink Binary](https://documentation.tardigrade.io/getting-started/uploading-your-first-object/set-up-uplink-cli).
+0. Upload your static site and other files to tardigrade using [Uplink](https://docs.storj.io/getting-started/uploading-your-first-object/set-up-uplink-cli)
+or [S3 gateway](https://docs.storj.io/api-reference/s3-gateway). Download the [Uplink Binary](https://docs.storj.io/getting-started/uploading-your-first-object/set-up-uplink-cli).
 
 1. Share an object or path to an object.
    If you are sharing an entire bucket or sub-folder, you will want to name your home page index.html.

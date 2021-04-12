@@ -13,7 +13,8 @@ import (
 	"storj.io/uplink"
 )
 
-func parseAccess(ctx context.Context, access string, cfg AuthServiceConfig) (*uplink.Access, error) {
+func parseAccess(ctx context.Context, access string, cfg AuthServiceConfig) (_ *uplink.Access, err error) {
+	defer mon.Task()(&ctx)(&err)
 	wrappedParse := func(access string) (*uplink.Access, error) {
 		parsed, err := uplink.ParseAccess(access)
 		if err != nil {

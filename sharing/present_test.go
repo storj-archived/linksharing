@@ -18,7 +18,7 @@ import (
 
 func TestDownloadContentTypeHeader(t *testing.T) {
 	cfg := Config{
-		URLBase:   "http://test.test",
+		URLBases:  []string{"http://test.test"},
 		Templates: "../web",
 	}
 
