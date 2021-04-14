@@ -66,13 +66,13 @@ Anything shared with `--url` will be readonly and available publicly (no secret 
 
 results in
 
-`https://link.tardigradeshare.io/jqaz8xihdea93jfbaks8324jrhq1/<path>`
+`https://link.us1.storjshare.io/s/jqaz8xihdea93jfbaks8324jrhq1/<path>`
 
 ## Custom URL configuration and static site hosting with Uplink
 
-You can use your own domain and host your website on Tardigrade with the following setup.
+You can use your own domain and host your website on Storj with the following setup.
 
-0. Upload your static site and other files to tardigrade using [Uplink](https://docs.storj.io/getting-started/uploading-your-first-object/set-up-uplink-cli)
+0. Upload your static site and other files to Storj using [Uplink](https://docs.storj.io/getting-started/uploading-your-first-object/set-up-uplink-cli)
 or [S3 gateway](https://docs.storj.io/api-reference/s3-gateway). Download the [Uplink Binary](https://docs.storj.io/getting-started/uploading-your-first-object/set-up-uplink-cli).
 
 1. Share an object or path to an object.
@@ -86,7 +86,7 @@ or [S3 gateway](https://docs.storj.io/api-reference/s3-gateway). Download the [U
    ```
    $ORIGIN example.com.
    $TTL    3600
-   <hostname>    	IN	CNAME	link.tardigradeshare.io.
+   <hostname>    	IN	CNAME	link.us1.storjshare.io.
    txt-<hostname> 	IN	TXT  	storj-root:<path>
    txt-<hostname> 	IN	TXT  	storj-access:<access key>
    ```
@@ -94,12 +94,12 @@ or [S3 gateway](https://docs.storj.io/api-reference/s3-gateway). Download the [U
    ```
    $ORIGIN example.com.
    $TTL    3600
-   www    	IN	CNAME	link.tardigradeshare.io.
+   www    	IN	CNAME	link.us1.storjshare.io.
    txt-www	IN	TXT  	storj-root:bucket/prefix
    txt-www	IN	TXT  	storj-access:jqaz8xihdea93jfbaks8324jrhq1
    ```
 
-2. Create a CNAME record on your hostname using our linksharing common URL `link.tardigradeshare.io.` as the target name.
+2. Create a CNAME record on your hostname using our linksharing common URL `link.us1.storjshare.io.` as the target name.
 
     <img src="docs/images/cname.png" width="50%">
 
