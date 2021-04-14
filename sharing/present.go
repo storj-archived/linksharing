@@ -109,6 +109,12 @@ func (handler *Handler) presentWithProject(ctx context.Context, w http.ResponseW
 		return WithAction(err, "stat object - index.html")
 	}
 
+	// special case for if the user requested a bucket but there's no trailing slash
+	if !strings.HasSuffix(r.URL.Path, "/") {
+		http.Redirect(w, r, r.URL.Path+"/", http.StatusSeeOther)
+		return nil
+	}
+
 	return handler.servePrefix(ctx, w, project, pr)
 }
 
