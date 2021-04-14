@@ -144,7 +144,10 @@
   }
 
   window.onload = async function () {
-      const fileExtension = {{.Data.Key}}.split('.').pop()
+      var fileExtension = {{.Data.Key}}.split('.').pop();
+      if (fileExtension) {
+        fileExtension = fileExtension.toLowerCase();
+      }
 
       switch (true) {
           case fileExtension === pdfExtensions:
