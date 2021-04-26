@@ -38,6 +38,7 @@ type LinkSharing struct {
 	StaticSourcesPath     string        `user:"true" help:"the path to where web assets are located" default:"./web/static"`
 	Templates             string        `user:"true" help:"the path to where renderable templates are located" default:"./web"`
 	LandingRedirectTarget string        `user:"true" help:"the url to redirect empty requests to" default:"https://www.storj.io/"`
+	RedirectHTTPS         bool          `user:"true" help:"redirect to HTTPS" devDefault:"false" releaseDefault:"true"`
 }
 
 var (
@@ -97,6 +98,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			URLBases:              publicURLs,
 			Templates:             runCfg.Templates,
 			StaticSourcesPath:     runCfg.StaticSourcesPath,
+			RedirectHTTPS:         runCfg.RedirectHTTPS,
 			LandingRedirectTarget: runCfg.LandingRedirectTarget,
 			TxtRecordTTL:          runCfg.TxtRecordTTL,
 			AuthServiceConfig: sharing.AuthServiceConfig{

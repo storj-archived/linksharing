@@ -62,6 +62,9 @@ type Config struct {
 	// DNS Server address, for TXT record lookup
 	DNSServer string
 
+	// RedirectHTTPS enables redirection to https://.
+	RedirectHTTPS bool
+
 	// LandingRedirectTarget is the url to redirect empty requests to.
 	LandingRedirectTarget string
 
@@ -80,6 +83,7 @@ type Handler struct {
 	txtRecords      *txtRecords
 	authConfig      AuthServiceConfig
 	static          http.Handler
+	redirectHTTPS   bool
 	landingRedirect string
 	uplink          *uplink.Config
 }
@@ -128,6 +132,7 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		authConfig:      config.AuthServiceConfig,
 		static:          http.StripPrefix("/static/", http.FileServer(http.Dir(config.StaticSourcesPath))),
 		landingRedirect: config.LandingRedirectTarget,
+		redirectHTTPS:   config.RedirectHTTPS,
 		uplink:          uplinkConfig,
 	}, nil
 }
@@ -207,6 +212,14 @@ func (handler *Handler) serveHTTP(ctx context.Context, w http.ResponseWriter, r 
 	}
 
 	switch {
+	case handler.redirectHTTPS && r.URL.Scheme == "http":
+		u, err := url.ParseRequestURI(r.RequestURI)
+		if err != nil {
+			return WithStatus(errs.New("invalid request URI"), http.StatusInternalServerError)
+		}
+		u.Scheme = "https"
+		http.Redirect(w, r, u.String(), http.StatusPermanentRedirect)
+		return nil
 	case strings.HasPrefix(r.URL.Path, "/static/"):
 		handler.static.ServeHTTP(w, r.WithContext(ctx))
 		return nil
