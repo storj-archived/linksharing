@@ -92,7 +92,7 @@
       <div class="modal-body pt-0">
         <p>Just copy and paste the link below to share this file.</p>
         <input class="form-control form-control-lg mt-4 input-url" type="url" id="url" readonly>
-        <button type="button" name="copy" class="btn btn-light btn-copy" onclick="copy()">Copy</button>
+        <button type="button" name="copy" class="btn btn-light btn-copy" onclick="copy()" id="copyButton">Copy</button>
       </div>
       <div class="modal-footer border-0">
         <button type="button" class="btn btn-primary btn-block btn-lg" data-dismiss="modal" onclick="closeModal()">Done</button>
@@ -109,6 +109,9 @@
   const audioExtensions = ['mp3', 'wav', 'ogg']
 
   function openModal() {
+    if(!navigator.clipboard) {
+      document.getElementById("copyButton").disabled = true;
+    }
     document.getElementById("backdrop").style.display = "block"
     document.getElementById("shareModal").style.display = "block"
     document.getElementById("shareModal").className += "show"
