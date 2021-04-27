@@ -18,5 +18,5 @@ require (
 	storj.io/common v0.0.0-20210412024514-5bcb1fff421e
 	storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840
 	storj.io/private v0.0.0-20210403210935-5fd57695864c
-	storj.io/uplink v1.4.6
+	storj.io/uplink v1.5.0-rc.1
 )
