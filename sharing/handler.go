@@ -181,6 +181,8 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !skipLog {
 		handler.log.Error("unable to handle request", zap.Error(handlerErr), zap.String("action", action))
+	} else {
+		handler.log.Debug("unable to handle request", zap.Error(handlerErr), zap.String("action", action))
 	}
 
 	w.WriteHeader(status)
@@ -223,12 +225,20 @@ func (handler *Handler) serveHTTP(ctx context.Context, w http.ResponseWriter, r 
 	case strings.HasPrefix(r.URL.Path, "/static/"):
 		handler.static.ServeHTTP(w, r.WithContext(ctx))
 		return nil
+	case strings.HasPrefix(r.URL.Path, "/health/process"):
+		return handler.healthProcess(ctx, w, r)
 	case handler.landingRedirect != "" && (r.URL.Path == "" || r.URL.Path == "/"):
 		http.Redirect(w, r, handler.landingRedirect, http.StatusSeeOther)
 		return nil
 	default:
 		return handler.handleStandard(ctx, w, r)
 	}
+}
+
+func (handler *Handler) healthProcess(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+	defer mon.Task()(&ctx)(&err)
+	_, err = w.Write([]byte("okay"))
+	return err
 }
 
 func isDomainOurs(host string, bases []*url.URL) (bool, error) {
