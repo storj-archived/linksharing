@@ -17,9 +17,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/webhelp.v1/whlog"
-	"gopkg.in/webhelp.v1/whmon"
-	"gopkg.in/webhelp.v1/whroute"
 
 	"storj.io/common/errs2"
 )
@@ -103,10 +100,8 @@ func New(log *zap.Logger, handler http.Handler, config Config) (*Server, error) 
 	}
 
 	// logging
-	httpHandler = logResponses(log,
-		whlog.LogRequests(log.Sugar().Infof, httpHandler))
-	handler = logResponses(log,
-		whlog.LogRequests(log.Sugar().Infof, handler))
+	httpHandler = logResponses(log, logRequests(log, httpHandler))
+	handler = logResponses(log, logRequests(log, handler))
 
 	server := &http.Server{
 		Handler:  httpHandler,
@@ -274,42 +269,4 @@ func shutdownWithTimeout(server *http.Server, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return errs2.IgnoreCanceled(server.Shutdown(ctx))
-}
-
-func logResponses(log *zap.Logger, h http.Handler) http.Handler {
-	return whmon.MonitorResponse(whroute.HandlerFunc(h,
-		func(w http.ResponseWriter, r *http.Request) {
-			method, requestURI := r.Method, r.RequestURI
-			rw := w.(whmon.ResponseWriter)
-			start := time.Now()
-
-			defer func() {
-				rec := recover()
-				if rec != nil {
-					log.Error("panic", zap.Any("recover", rec))
-					panic(rec)
-				}
-			}()
-			h.ServeHTTP(rw, r)
-
-			if !rw.WroteHeader() {
-				rw.WriteHeader(http.StatusOK)
-			}
-
-			code := rw.StatusCode()
-
-			level := log.Error
-			if code < 300 {
-				level = log.Info
-			} else if code < 500 {
-				level = log.Warn
-			}
-			level("access",
-				zap.String("method", method),
-				zap.String("request-uri", requestURI),
-				zap.Int("code", code),
-				zap.Int64("content-length", r.ContentLength),
-				zap.Int64("written", rw.Written()),
-				zap.Duration("duration", time.Since(start)))
-		}))
 }
