@@ -306,7 +306,7 @@ func testHandlerRequests(t *testing.T, ctx *testcontext.Context, planet *testpla
 
 			url := "http://localhost/" + testCase.path
 			w := httptest.NewRecorder()
-			r, err := http.NewRequest(testCase.method, url, nil)
+			r, err := http.NewRequestWithContext(ctx, testCase.method, url, nil)
 			require.NoError(t, err)
 			handler.ServeHTTP(w, r)
 

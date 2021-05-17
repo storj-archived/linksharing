@@ -27,7 +27,8 @@ func TestDownloadContentTypeHeader(t *testing.T) {
 
 	ctx := testcontext.New(t)
 	w := httptest.NewRecorder()
-	r, err := http.NewRequest("GET", "http://test.test?download", nil)
+
+	r, err := http.NewRequestWithContext(ctx, "GET", "http://test.test?download", nil)
 	require.NoError(t, err)
 
 	pr := &parsedRequest{}

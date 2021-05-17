@@ -136,7 +136,7 @@ func TestServer(t *testing.T) {
 				return s.Run(runCtx)
 			})
 
-			testCase.DoGet(t)
+			testCase.DoGet(ctx, t)
 		})
 	}
 }
@@ -167,7 +167,7 @@ func (testCase *serverTestCase) NewServer(tb testing.TB) (*Server, bool) {
 	return s, true
 }
 
-func (testCase *serverTestCase) DoGet(tb testing.TB) {
+func (testCase *serverTestCase) DoGet(ctx context.Context, tb testing.TB) {
 	scheme := "http"
 	client := &http.Client{}
 	addr := testCase.Address
@@ -181,7 +181,10 @@ func (testCase *serverTestCase) DoGet(tb testing.TB) {
 		}
 	}
 
-	resp, err := client.Get(fmt.Sprintf("%s://%s", scheme, addr))
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s://%s", scheme, addr), nil)
+	require.NoError(tb, err)
+
+	resp, err := client.Do(req)
 	require.NoError(tb, err)
 	defer func() { _ = resp.Body.Close() }()
 

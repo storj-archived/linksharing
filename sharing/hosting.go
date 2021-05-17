@@ -22,7 +22,8 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 
 	host, _, err := net.SplitHostPort(r.Host)
 	if err != nil {
-		if aerr, ok := err.(*net.AddrError); ok && aerr.Err == "missing port in address" {
+		var aerr *net.AddrError
+		if errors.As(err, &aerr) && aerr.Err == "missing port in address" {
 			host = r.Host
 		} else {
 			return WithStatus(err, http.StatusBadRequest)
