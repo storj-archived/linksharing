@@ -4,6 +4,7 @@
 package sharing
 
 import (
+	"context"
 	"net/url"
 	"strconv"
 	"strings"
@@ -113,7 +114,7 @@ func (e *ExponentialBackoff) init() {
 
 // Wait should be called when there is a failure. Each time it is called
 // it will sleep an exponentially longer time, up to a max.
-func (e *ExponentialBackoff) Wait() {
+func (e *ExponentialBackoff) Wait(ctx context.Context) error {
 	e.init()
 	if e.delay == 0 {
 		e.delay = e.Min
@@ -123,7 +124,20 @@ func (e *ExponentialBackoff) Wait() {
 	if e.delay > e.Max {
 		e.delay = e.Max
 	}
-	time.Sleep(e.delay)
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	t := time.NewTimer(e.delay)
+	defer t.Stop()
+
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Maxed returns true if the wait time has maxed out.

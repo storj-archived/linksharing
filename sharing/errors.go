@@ -14,6 +14,12 @@ const (
 	errStatusCode errSym = 2
 )
 
+// httpStatusClientClosedRequest is used when the client closes the request without
+// waiting for the full answer. There's no standard for such status, however, nginx
+// does define a custom one, which is common enough to warrant using it.
+// See https://httpstatuses.com/499.
+const httpStatusClientClosedRequest = 499
+
 // WithAction annotates an error with an action. If err is nil, does nothing.
 func WithAction(err error, action string) error {
 	return errdata.Annotate(err, errAction, action)

@@ -164,6 +164,10 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusForbidden
 		message = "Access denied."
 		skipLog = true
+	case errors.Is(handlerErr, context.Canceled) && errors.Is(ctx.Err(), context.Canceled):
+		status = httpStatusClientClosedRequest
+		message = "Client closed request."
+		skipLog = true
 	default:
 		status = GetStatus(handlerErr, status)
 		switch status {

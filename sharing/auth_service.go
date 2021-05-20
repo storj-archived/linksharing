@@ -58,7 +58,9 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			if !delay.Maxed() {
-				delay.Wait()
+				if err := delay.Wait(ctx); err != nil {
+					return nil, WithStatus(AuthServiceError.Wrap(err), httpStatusClientClosedRequest)
+				}
 				continue
 			}
 			return nil, WithStatus(AuthServiceError.Wrap(err),
@@ -79,7 +81,9 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 			var authResp AuthServiceResponse
 			if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
 				if !delay.Maxed() {
-					delay.Wait()
+					if err := delay.Wait(ctx); err != nil {
+						return false, nil, WithStatus(AuthServiceError.Wrap(err), httpStatusClientClosedRequest)
+					}
 					return true, nil, nil
 				}
 				return false, nil, WithStatus(AuthServiceError.Wrap(err),
