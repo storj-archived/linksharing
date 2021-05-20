@@ -64,24 +64,35 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 			return nil, WithStatus(AuthServiceError.Wrap(err),
 				http.StatusInternalServerError)
 		}
-		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusOK {
-			return nil, WithStatus(
-				AuthServiceError.New("invalid status code: %d", resp.StatusCode),
-				resp.StatusCode)
-		}
+		// Use an anonymous function for deferring the response close before the
+		// next retry and not pilling it up when the method returns.
+		retry, authResp, err := func() (retry bool, _ *AuthServiceResponse, _ error) {
+			defer func() { _ = resp.Body.Close() }()
 
-		var authResp AuthServiceResponse
-		if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-			if !delay.Maxed() {
-				delay.Wait()
-				continue
+			if resp.StatusCode != http.StatusOK {
+				return false, nil, WithStatus(
+					AuthServiceError.New("invalid status code: %d", resp.StatusCode),
+					resp.StatusCode)
 			}
-			return nil, WithStatus(AuthServiceError.Wrap(err),
-				http.StatusInternalServerError)
+
+			var authResp AuthServiceResponse
+			if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+				if !delay.Maxed() {
+					delay.Wait()
+					return true, nil, nil
+				}
+				return false, nil, WithStatus(AuthServiceError.Wrap(err),
+					http.StatusInternalServerError)
+			}
+
+			return false, &authResp, nil
+		}()
+
+		if retry {
+			continue
 		}
 
-		return &authResp, nil
+		return authResp, err
 	}
 }
