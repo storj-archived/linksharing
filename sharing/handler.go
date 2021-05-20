@@ -160,9 +160,25 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusNotFound
 		message = "Oops! Object not found."
 		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrBucketNameInvalid):
+		status = http.StatusBadRequest
+		message = "Oops! Invalid bucket name."
+		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrObjectKeyInvalid):
+		status = http.StatusBadRequest
+		message = "Oops! Invalid object key."
+		skipLog = true
 	case errors.Is(handlerErr, uplink.ErrPermissionDenied):
 		status = http.StatusForbidden
 		message = "Access denied."
+		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrBandwidthLimitExceeded):
+		status = http.StatusTooManyRequests
+		message = "Oops! Bandwidth limit exceeded."
+		skipLog = true
+	case errors.Is(handlerErr, uplink.ErrTooManyRequests):
+		status = http.StatusTooManyRequests
+		message = "Oops! Rate limited due too many request."
 		skipLog = true
 	case errors.Is(handlerErr, context.Canceled) && errors.Is(ctx.Err(), context.Canceled):
 		status = httpStatusClientClosedRequest
@@ -184,9 +200,18 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !skipLog {
-		handler.log.Error("unable to handle request", zap.Error(handlerErr), zap.String("action", action))
+		handler.log.Error("unable to handle request",
+			zap.Error(handlerErr),
+			zap.String("action", action),
+			zap.Int("status_code", status),
+		)
 	} else {
-		handler.log.Debug("unable to handle request", zap.Error(handlerErr), zap.String("action", action))
+		handler.log.Debug(
+			"unable to handle request",
+			zap.Error(handlerErr),
+			zap.String("action", action),
+			zap.Int("status_code", status),
+		)
 	}
 
 	w.WriteHeader(status)

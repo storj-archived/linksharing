@@ -36,7 +36,7 @@ func (handler *Handler) present(ctx context.Context, w http.ResponseWriter, r *h
 
 	project, err := handler.uplink.OpenProject(ctx, pr.access)
 	if err != nil {
-		return WithAction(err, "open project")
+		return WithStatus(WithAction(err, "open project"), http.StatusBadRequest)
 	}
 	defer func() {
 		if err := project.Close(); err != nil {

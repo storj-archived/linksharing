@@ -28,7 +28,7 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 		// preserve query params
 		destination := (&url.URL{Path: "/s/" + path, RawQuery: r.URL.RawQuery}).String()
 		http.Redirect(w, r, destination, http.StatusSeeOther)
-		return
+		return nil
 	}
 
 	var serializedAccess string
