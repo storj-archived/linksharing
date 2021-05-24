@@ -8,7 +8,7 @@ require (
 	github.com/miekg/dns v1.0.14
 	github.com/oschwald/maxminddb-golang v1.7.0
 	github.com/spacemonkeygo/errors v0.0.0-20201030155909-2f5f890dbc62 // indirect
-	github.com/spacemonkeygo/monkit/v3 v3.0.10
+	github.com/spacemonkeygo/monkit/v3 v3.0.12
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/stretchr/testify v1.6.1
