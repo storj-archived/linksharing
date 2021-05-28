@@ -46,11 +46,9 @@ func logResponses(log *zap.Logger, h http.Handler) http.Handler {
 
 			code := rw.StatusCode()
 
-			level := log.Error
-			if code < 300 {
-				level = log.Info
-			} else if code < 500 {
-				level = log.Warn
+			level := log.Info
+			if code >= 300 {
+				level = log.Error
 			}
 			level("response",
 				zap.String("method", method),
