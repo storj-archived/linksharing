@@ -56,6 +56,7 @@ func logResponses(log *zap.Logger, h http.Handler) http.Handler {
 				// we are deliberately not logging the request URI as it has
 				// sensitive information in it.
 				zap.Int("code", code),
+				zap.String("user-agent", r.UserAgent()),
 				zap.Int64("content-length", r.ContentLength),
 				zap.Int64("written", rw.Written()),
 				zap.Duration("duration", time.Since(start)))
