@@ -18,7 +18,7 @@ import (
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
-	"storj.io/common/rpc"
+	"storj.io/common/rpc/rpcpool"
 	"storj.io/linksharing/objectmap"
 	"storj.io/uplink"
 	"storj.io/uplink/private/transport"
@@ -118,7 +118,11 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 	}
 
 	err = transport.SetConnectionPool(context.TODO(), uplinkConfig,
-		rpc.NewDefaultConnectionPool())
+		rpcpool.New(rpcpool.Options{
+			Capacity:       10000,
+			KeyCapacity:    2,
+			IdleExpiration: 30 * time.Second,
+		}))
 	if err != nil {
 		return nil, err
 	}
