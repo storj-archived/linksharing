@@ -70,6 +70,15 @@ type Config struct {
 
 	// uplink Config settings
 	Uplink *uplink.Config
+
+	// ConnectionPoolCapacity is the number of connections in the Uplink RPC pool to keep open.
+	ConnectionPoolCapacity int
+
+	// ConnectionPoolKeyCapacity is the number of connections in the Uplink RPC pool to keep open per cache key.
+	ConnectionPoolKeyCapacity int
+
+	// ConnectionPOolIdleExpiration is how long a connection in the Uplink RPC pool is allowed to stay idle.
+	ConnectionPoolIdleExpiration time.Duration
 }
 
 // Handler implements the link sharing HTTP handler.
@@ -119,9 +128,9 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 
 	err = transport.SetConnectionPool(context.TODO(), uplinkConfig,
 		rpcpool.New(rpcpool.Options{
-			Capacity:       10000,
-			KeyCapacity:    2,
-			IdleExpiration: 30 * time.Second,
+			Capacity:       config.ConnectionPoolCapacity,
+			KeyCapacity:    config.ConnectionPoolKeyCapacity,
+			IdleExpiration: config.ConnectionPoolIdleExpiration,
 		}))
 	if err != nil {
 		return nil, err
