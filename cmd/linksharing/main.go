@@ -81,6 +81,10 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 	ctx, _ := process.Ctx(cmd)
 	log := zap.L()
 
+	if err := process.InitMetricsWithHostname(ctx, log, nil); err != nil {
+		zap.S().Warn("Failed to initialize telemetry batcher: ", err)
+	}
+
 	publicURLs := strings.Split(runCfg.PublicURL, ",")
 
 	peer, err := linksharing.New(log, linksharing.Config{
