@@ -73,6 +73,9 @@ type Config struct {
 
 	// ConnectionPool is configuration for RPC connection pool options.
 	ConnectionPool ConnectionPoolConfig
+
+	// UseQOSAndCC indicates if congestion control and QOS settings from BackgroundDialer should be used.
+	UseQosAndCC bool
 }
 
 // ConnectionPoolConfig is a config struct for configuring RPC connection pool options.
@@ -125,6 +128,10 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 	uplinkConfig := config.Uplink
 	if uplinkConfig == nil {
 		uplinkConfig = &uplink.Config{}
+	}
+	if !config.UseQosAndCC {
+		// an unset DialContext defaults to BackgroundDialer's CC and QOS settings
+		uplinkConfig.DialContext = (&net.Dialer{}).DialContext
 	}
 
 	err = transport.SetConnectionPool(context.TODO(), uplinkConfig,

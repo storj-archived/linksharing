@@ -39,6 +39,7 @@ type LinkSharing struct {
 	Templates             string        `user:"true" help:"the path to where renderable templates are located" default:"./web"`
 	LandingRedirectTarget string        `user:"true" help:"the url to redirect empty requests to" default:"https://www.storj.io/"`
 	RedirectHTTPS         bool          `user:"true" help:"redirect to HTTPS" devDefault:"false" releaseDefault:"true"`
+	UseQosAndCC           bool          `user:"true" help:"use congestion control and QOS settings" default:"true"`
 	ConnectionPool        ConnectionPoolConfig
 }
 
@@ -119,6 +120,7 @@ func cmdRun(cmd *cobra.Command, args []string) (err error) {
 			},
 			DNSServer:      runCfg.DNSServer,
 			ConnectionPool: sharing.ConnectionPoolConfig(runCfg.ConnectionPool),
+			UseQosAndCC:    runCfg.UseQosAndCC,
 		},
 		GeoLocationDB: runCfg.GeoLocationDB,
 	})
