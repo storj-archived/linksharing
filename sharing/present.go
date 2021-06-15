@@ -160,7 +160,7 @@ func (handler *Handler) showObject(ctx context.Context, w http.ResponseWriter, r
 
 	handler.renderTemplate(w, "single-object.html", pageData{
 		Data:  input,
-		Title: pr.title,
+		Title: input.Key,
 	})
 	return nil
 }
