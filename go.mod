@@ -9,7 +9,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.7.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spacemonkeygo/errors v0.0.0-20201030155909-2f5f890dbc62 // indirect
-	github.com/spacemonkeygo/monkit/v3 v3.0.12
+	github.com/spacemonkeygo/monkit/v3 v3.0.13
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.6.1
 	github.com/zeebo/errs v1.2.2
@@ -20,6 +20,6 @@ require (
 	gopkg.in/webhelp.v1 v1.0.0-20170530084242-3f30213e4c49
 	storj.io/common v0.0.0-20210601214904-24681cb3da97
 	storj.io/dotworld v0.0.0-20210324183515-0d11aeccd840
-	storj.io/private v0.0.0-20210531210843-5b0f672699d1
+	storj.io/private v0.0.0-20210615185437-f53a5fcf98e0
 	storj.io/uplink v1.5.0-rc.1.0.20210603135837-2711b4e68738
 )
