@@ -122,3 +122,7 @@ or [S3 gateway](https://docs.storj.io/api-reference/s3-gateway). Download the [U
 7. That's it! You should be all set to access your website e.g. `http://www.example.test`
 
 [Maxmind]: https://dev.maxmind.com/geoip/geoipupdate/
+
+## LICENSE
+
+This project is licensed under the AGPL-v3. See LICENSE for more.
