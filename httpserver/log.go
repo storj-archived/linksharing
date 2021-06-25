@@ -17,6 +17,7 @@ func logRequests(log *zap.Logger, h http.Handler) http.Handler {
 		log.Info("access",
 			zap.String("method", r.Method),
 			zap.String("host", r.Host),
+			zap.String("user-agent", r.UserAgent()),
 			// we are deliberately not logging the request URI as it has
 			// sensitive information in it.
 		)
