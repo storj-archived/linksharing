@@ -30,7 +30,7 @@ trap cleanup EXIT
 for ((i=0;i<NUM_FILES;i++)); do
     TMPFILE="$(mktemp /tmp/testXXXXXXX).dat"
     TMPNAME="$(basename "$TMPFILE")"
-    dd if=/dev/random of="$TMPFILE" bs=1M count="$FILE_SIZE_MB" &> /dev/null
+    dd if=/dev/random of="$TMPFILE" bs=1048576 count="$FILE_SIZE_MB" &> /dev/null
     TMPFILES+=("$TMPFILE")
     uplink --access "$ACCESS_GRANT" cp "$TMPFILE" "sj://$BUCKET/$TMPNAME"
 done
