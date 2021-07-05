@@ -32,8 +32,10 @@ type AuthServiceResponse struct {
 // AuthServiceError wraps all the errors returned when resolving an access key.
 var AuthServiceError = errs.Class("auth service")
 
-// Resolve maps an access key into an auth service response.
-func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *AuthServiceResponse, err error) {
+// Resolve maps an access key into an auth service response. clientIP is the IP
+// of the client that originated the request and it's required to be sent to the
+// Auth Service.
+func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string, clientIP string) (_ *AuthServiceResponse, err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	reqURL, err := url.Parse(a.BaseURL)
@@ -49,6 +51,7 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 			http.StatusInternalServerError)
 	}
 	req.Header.Set("Authorization", "Bearer "+a.Token)
+	req.Header.Set("Forwarded", "for="+clientIP)
 
 	delay := ExponentialBackoff{
 		Min: 100 * time.Millisecond,

@@ -50,7 +50,9 @@ func (handler *Handler) handleStandard(ctx context.Context, w http.ResponseWrite
 		pr.realKey = parts[2]
 	}
 
-	access, err := parseAccess(ctx, serializedAccess, handler.authConfig)
+	access, err := parseAccess(ctx, serializedAccess, handler.authConfig,
+		getClientIP(handler.trustedClientIPsList, r),
+	)
 	if err != nil {
 		return err
 	}

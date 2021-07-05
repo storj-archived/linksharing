@@ -30,7 +30,9 @@ func (handler *Handler) handleHostingService(ctx context.Context, w http.Respons
 		}
 	}
 
-	access, root, err := handler.txtRecords.fetchAccessForHost(ctx, host)
+	access, root, err := handler.txtRecords.fetchAccessForHost(
+		ctx, host, getClientIP(handler.trustedClientIPsList, r),
+	)
 	if err != nil {
 		return WithAction(err, "fetch access")
 	}

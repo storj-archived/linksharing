@@ -76,6 +76,21 @@ type Config struct {
 
 	// UseQOSAndCC indicates if congestion control and QOS settings from BackgroundDialer should be used.
 	UseQosAndCC bool
+
+	// ClientTrustedIPsList is the list of client IPs which are trusted. These IPs
+	// are usually from gateways, load balancers, etc., which expose the service
+	// to the public internet. Trusting them implies that the service may use
+	// information of the request (e.g. getting client, the originator of the
+	// request, IP from headers).
+	ClientTrustedIPsList []string
+
+	// UseClientIPHeaders indicates that the HTTP headers `Forwarded`,
+	// `X-Forwarded-Ip`, and `X-Real-Ip` (in this order) are used to get the
+	// client IP before falling back of getting from the client request.
+	//
+	// When true it reads them only from the trusted IPs (ClientTrustedIPList) if
+	// it isn't empty.
+	UseClientIPHeaders bool
 }
 
 // ConnectionPoolConfig is a config struct for configuring RPC connection pool options.
@@ -89,16 +104,17 @@ type ConnectionPoolConfig struct {
 //
 // architecture: Service
 type Handler struct {
-	log             *zap.Logger
-	urlBases        []*url.URL
-	templates       *template.Template
-	mapper          *objectmap.IPDB
-	txtRecords      *txtRecords
-	authConfig      AuthServiceConfig
-	static          http.Handler
-	redirectHTTPS   bool
-	landingRedirect string
-	uplink          *uplink.Config
+	log                  *zap.Logger
+	urlBases             []*url.URL
+	templates            *template.Template
+	mapper               *objectmap.IPDB
+	txtRecords           *txtRecords
+	authConfig           AuthServiceConfig
+	static               http.Handler
+	redirectHTTPS        bool
+	landingRedirect      string
+	uplink               *uplink.Config
+	trustedClientIPsList trustedIPsList
 }
 
 // NewHandler creates a new link sharing HTTP handler.
@@ -140,17 +156,29 @@ func NewHandler(log *zap.Logger, mapper *objectmap.IPDB, config Config) (*Handle
 		return nil, err
 	}
 
+	var trustedClientIPs trustedIPsList
+	if config.UseClientIPHeaders {
+		if len(config.ClientTrustedIPsList) > 0 {
+			trustedClientIPs = newTrustedIPsListTrustIPs(config.ClientTrustedIPsList...)
+		} else {
+			trustedClientIPs = newTrustedIPsListTrustAll()
+		}
+	} else {
+		trustedClientIPs = newTrustedIPsListUntrustAll()
+	}
+
 	return &Handler{
-		log:             log,
-		urlBases:        bases,
-		templates:       templates,
-		mapper:          mapper,
-		txtRecords:      newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
-		authConfig:      config.AuthServiceConfig,
-		static:          http.StripPrefix("/static/", http.FileServer(http.Dir(config.StaticSourcesPath))),
-		landingRedirect: config.LandingRedirectTarget,
-		redirectHTTPS:   config.RedirectHTTPS,
-		uplink:          uplinkConfig,
+		log:                  log,
+		urlBases:             bases,
+		templates:            templates,
+		mapper:               mapper,
+		txtRecords:           newTxtRecords(config.TxtRecordTTL, dns, config.AuthServiceConfig),
+		authConfig:           config.AuthServiceConfig,
+		static:               http.StripPrefix("/static/", http.FileServer(http.Dir(config.StaticSourcesPath))),
+		landingRedirect:      config.LandingRedirectTarget,
+		redirectHTTPS:        config.RedirectHTTPS,
+		uplink:               uplinkConfig,
+		trustedClientIPsList: trustedClientIPs,
 	}, nil
 }
 

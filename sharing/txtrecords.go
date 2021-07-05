@@ -44,15 +44,17 @@ func newTxtRecords(maxTTL time.Duration, dns *DNSClient, auth AuthServiceConfig)
 	}
 }
 
-// fetchAccessForHost fetches the root and access grant from the cache or dns server when applicable.
-func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string) (access *uplink.Access, root string, err error) {
+// fetchAccessForHost fetches the root and access grant from the cache or dns
+// server when applicable. clientIP is the IP of the client that originated the
+// request.
+func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname string, clientIP string) (access *uplink.Access, root string, err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	val, ok := records.cache.Load(hostname)
 	if !ok {
 		// nothing in the cache, we have to go do a dns lookup before
 		// we can return.
-		record, err := records.updateCache(ctx, hostname, time.Time{})
+		record, err := records.updateCache(ctx, hostname, time.Time{}, clientIP)
 		if err != nil {
 			return nil, "", err
 		}
@@ -73,19 +75,21 @@ func (records *txtRecords) fetchAccessForHost(ctx context.Context, hostname stri
 		// this strategy saves us the initial dns request round trip most
 		// times.
 		go func(ctx context.Context, hostname string, record *txtRecord) {
-			_, _ = records.updateCache(ctx, hostname, record.expiration)
+			_, _ = records.updateCache(ctx, hostname, record.expiration, clientIP)
 		}(ctx, hostname, record)
 	}
 
 	return record.access, record.root, nil
 }
 
-// updateCache will attempt to fetch and update the dns record for the given hostname.
-// if there is a failure, updateCache will clear the cache and return the error.
-// if currentExpiration is nil, updateCache will do nothing if there is already a
-// cached value. if currentExpiration is set, updateCache will do nothing if the
-// currently cached expiration is different than currentExpiration.
-func (records *txtRecords) updateCache(ctx context.Context, hostname string, currentExpiration time.Time) (record *txtRecord, err error) {
+// updateCache will attempt to fetch and update the dns record for the given
+// hostname. if there is a failure, updateCache will clear the cache and return
+// the error. If currentExpiration is nil, updateCache will do nothing if there
+// is already a cached value. If currentExpiration is set, updateCache will do
+// nothing if the currently cached expiration is different than
+// currentExpiration. clientIP is the IP of the client that originated the
+// request.
+func (records *txtRecords) updateCache(ctx context.Context, hostname string, currentExpiration time.Time, clientIP string) (record *txtRecord, err error) {
 	defer mon.Task()(&ctx)(&err)
 	defer records.updateLocks.Lock(hostname)()
 
@@ -97,7 +101,7 @@ func (records *txtRecords) updateCache(ctx context.Context, hostname string, cur
 		}
 	}
 
-	record, err = records.queryAccessFromDNS(ctx, hostname)
+	record, err = records.queryAccessFromDNS(ctx, hostname, clientIP)
 	if err != nil {
 		records.cache.Delete(hostname)
 		return record, err
@@ -107,8 +111,10 @@ func (records *txtRecords) updateCache(ctx context.Context, hostname string, cur
 	return record, nil
 }
 
-// queryAccessFromDNS does an txt record lookup for the hostname on the dns server.
-func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string) (record *txtRecord, err error) {
+// queryAccessFromDNS does an txt record lookup for the hostname on the DNS
+// server. clientIP is the IP of the client that originated the request and it's
+// required to be sent to the Auth Service.
+func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname string, clientIP string) (record *txtRecord, err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	r, err := records.dns.Lookup(ctx, "txt-"+hostname, dns.TypeTXT)
@@ -128,7 +134,7 @@ func (records *txtRecords) queryAccessFromDNS(ctx context.Context, hostname stri
 		root = set.Lookup("storj-path")
 	}
 
-	access, err := parseAccess(ctx, serializedAccess, records.auth)
+	access, err := parseAccess(ctx, serializedAccess, records.auth, clientIP)
 	if err != nil {
 		return nil, errs.New("failure with hostname %q: %w", hostname, err)
 	}
