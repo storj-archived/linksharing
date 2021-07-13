@@ -72,6 +72,10 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 		retry, authResp, err := func() (retry bool, _ *AuthServiceResponse, _ error) {
 			defer func() { _ = resp.Body.Close() }()
 
+			if resp.StatusCode == http.StatusInternalServerError {
+				return true, nil, nil // auth only returns this for unexpected issues
+			}
+
 			if resp.StatusCode != http.StatusOK {
 				return false, nil, WithStatus(
 					AuthServiceError.New("invalid status code: %d", resp.StatusCode),
@@ -81,9 +85,6 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 			var authResp AuthServiceResponse
 			if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
 				if !delay.Maxed() {
-					if err := delay.Wait(ctx); err != nil {
-						return false, nil, WithStatus(AuthServiceError.Wrap(err), httpStatusClientClosedRequest)
-					}
 					return true, nil, nil
 				}
 				return false, nil, WithStatus(AuthServiceError.Wrap(err),
@@ -94,6 +95,9 @@ func (a AuthServiceConfig) Resolve(ctx context.Context, accessKeyID string) (_ *
 		}()
 
 		if retry {
+			if err := delay.Wait(ctx); err != nil {
+				return nil, WithStatus(AuthServiceError.Wrap(err), httpStatusClientClosedRequest)
+			}
 			continue
 		}
 
