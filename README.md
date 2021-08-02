@@ -1,3 +1,6 @@
+# THIS PACKAGE IS NO LONGER MAINTAINED - PLEASE SEE [GATEWAY-MT'S LINKSHARING CMD](https://github.com/storj/gateway-mt/tree/main/cmd/linksharing)
+
+---
 # Link Sharing Service
 
 ## Building
